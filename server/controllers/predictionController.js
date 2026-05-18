@@ -9,7 +9,7 @@ const Certification = require('../models/Certification');
 const PredictionResult = require('../models/PredictionResult');
 const GradeUpload = require('../models/GradeUpload');
 
-const ML_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
+const ML_URL = (process.env.ML_SERVICE_URL || 'http://localhost:8000').replace(/\/$/, '');
 
 const normalizeCategoryKey = (value = '') =>
   String(value)

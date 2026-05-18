@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const ML_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
+const ML_URL = (process.env.ML_SERVICE_URL || 'http://localhost:8000').replace(/\/$/, '');
 
 const proxyMLRequest = async (endpoint, res) => {
   try {

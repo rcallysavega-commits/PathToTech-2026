@@ -18,9 +18,13 @@ DATASET_PATH = os.getenv("DATASET_PATH", "dataset/employability.xlsx")
 
 def _train_model_on_startup():
     try:
+        logger.info(f"Training thread started. Looking for dataset at: {DATASET_PATH}")
+        logger.info(f"Current working directory: {os.getcwd()}")
+        logger.info(f"Dataset exists: {os.path.exists(DATASET_PATH)}")
         if os.path.exists(DATASET_PATH):
+            logger.info("Dataset found. Starting model training...")
             info = ml_model.load_and_train(DATASET_PATH)
-            logger.info(f"Model trained: {info}")
+            logger.info(f"Model trained successfully: {info}")
         else:
             logger.warning(f"Dataset not found at {DATASET_PATH}. Model not trained.")
     except Exception as exc:
