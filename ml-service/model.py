@@ -2293,10 +2293,15 @@ def _compute_student_rule_sum(student_skills: list[str], has_cert: bool, employa
     )
     return float(np.sum(rule_vector))
 
-def _rank_jobs_by_cosine(student_es_score: float, n_components: int) -> list[tuple[str, float, float]]:
+def _rank_jobs_by_cosine(student_es_score: float, n_components: int, student_cluster_probs: np.ndarray | None = None) -> list[tuple[str, float, float]]:
     ranked: list[tuple[str, float, float]] = []
-    weight_vec = np.array([cluster_weights.get(i, 0.0) for i in range(n_components)], dtype=float)
-    student_es_array = np.array([student_es_score], dtype=float)
+    # Use the student's own cluster probabilities so rankings are personalised.
+    # Fall back to global cluster_weights only when probs are unavailable.
+    if student_cluster_probs is not None and student_cluster_probs.size == n_components:
+        weight_vec = student_cluster_probs.astype(float)
+    else:
+        weight_vec = np.array([cluster_weights.get(i, 0.0) for i in range(n_components)], dtype=float)
+    student_profile_vec = np.array([student_es_score], dtype=float)
 
     for job, profile in job_cluster_profiles.items():
         if job in INVALID_JOB_TYPES:
@@ -2305,18 +2310,21 @@ def _rank_jobs_by_cosine(student_es_score: float, n_components: int) -> list[tup
         if profile_vec.size != n_components:
             continue
         rule_vec = np.array(job_rule_strengths.get(job, np.zeros(n_components, dtype=float)), dtype=float)
-        # GMM term: weighted cluster probabilities (GMM-based component)
-        gmm_term = float(np.sum(profile_vec * weight_vec))
-        # ECLAT term: sum of rule strengths across all clusters (ECLAT-based component)
-        eclat_term = float(np.sum(rule_vec))
+        # GMM term: dot product of job's cluster profile with student's cluster probabilities.
+        # Higher when the student's dominant clusters match this job's typical clusters.
+        gmm_term = float(np.dot(profile_vec, weight_vec))
+        # ECLAT term: rule strengths weighted by student's cluster probabilities.
+        # Higher when this job's ECLAT rules are strong in the student's probable clusters.
+        eclat_term = float(np.dot(rule_vec, weight_vec))
         # Job Recommendation Score Formula (hybrid GMM + ECLAT)
         # job_score = (JS_BETA * gmm_term) + ((1.0 - JS_BETA) * eclat_term)
         # JS_BETA = 0.7: Weights GMM at 70% and ECLAT at 30% for balanced job ranking
         job_score = (JS_BETA * gmm_term) + ((1.0 - JS_BETA) * eclat_term)
-        similarity = _cosine_similarity(student_es_array, np.array([job_score], dtype=float))
+        job_vec = np.array([job_score], dtype=float)
+        similarity = _cosine_similarity(student_profile_vec, job_vec)
         ranked.append((job, similarity, job_score))
 
-    ranked.sort(key=lambda item: (-item[1], -item[2], item[0]))
+    ranked.sort(key=lambda item: (-item[2], item[0]))
     return ranked
 
 
@@ -2454,7 +2462,7 @@ def predict(input_data: dict) -> dict:
     )
     gmm_contribution = float(np.sum(cluster_probs * weight_vec))
     student_es_score = (ES_ALPHA * gmm_contribution) + ((1.0 - ES_ALPHA) * student_rule_sum)
-    cosine_ranked_jobs = _rank_jobs_by_cosine(student_es_score, n_components)
+    cosine_ranked_jobs = _rank_jobs_by_cosine(student_es_score, n_components, cluster_probs)
 
     job_recommendations = [job for job, _, _ in cosine_ranked_jobs[:5]]
     if not job_recommendations:
