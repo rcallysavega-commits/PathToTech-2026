@@ -73,6 +73,22 @@ class PatternDiscoveryRequest(BaseModel):
 def health():
     return {"status": "ok", "service": "PathToTech ML Service"}
 
+@app.get("/debug-status")
+def debug_status():
+    import os
+    return {
+        "model_ready": ml_model.is_model_ready(),
+        "gmm_trained": ml_model.gmm_model is not None,
+        "scaler_ready": ml_model.scaler is not None,
+        "training_info_set": ml_model.training_info is not None,
+        "job_profiles_count": len(ml_model.job_cluster_profiles),
+        "cluster_weights_count": len(ml_model.cluster_weights),
+        "training_feature_matrix_shape": list(ml_model.training_feature_matrix.shape) if ml_model.training_feature_matrix is not None else None,
+        "dataset_path": DATASET_PATH,
+        "dataset_exists": os.path.exists(DATASET_PATH),
+        "cwd": os.getcwd(),
+    }
+
 
 @app.post("/predict")
 def predict(payload: PredictRequest):
@@ -133,9 +149,10 @@ def discover_patterns(payload: PatternDiscoveryRequest):
 
 @app.get("/gmm-visualization")
 def gmm_visualization():
-    if not ml_model.is_model_ready():
-        raise HTTPException(status_code=503, detail="Model not trained yet.")
-    return ml_model.get_gmm_visualization_data()
+    data = ml_model.get_gmm_visualization_data()
+    if not data.get("points"):
+        raise HTTPException(status_code=503, detail="GMM model not trained yet.")
+    return data
 
 
 if __name__ == "__main__":
