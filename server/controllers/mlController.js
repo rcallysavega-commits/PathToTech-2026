@@ -16,6 +16,16 @@ const proxyMLRequest = async (endpoint, res) => {
   }
 };
 
+// GET /api/ml/ping  (public — used to wake up ML service on page load)
+const pingML = async (req, res) => {
+  try {
+    await axios.get(`${ML_URL}/`, { timeout: 60000 });
+    return res.status(200).json({ success: true });
+  } catch (_) {
+    return res.status(200).json({ success: false });
+  }
+};
+
 // GET /api/ml/training-info
 const getTrainingInfo = (req, res) => proxyMLRequest('/training-info', res);
 
@@ -43,4 +53,4 @@ const discoverPatterns = async (req, res) => {
   }
 };
 
-module.exports = { getTrainingInfo, getFeatures, getModelSummary, getDatasetOptions, discoverPatterns };
+module.exports = { pingML, getTrainingInfo, getFeatures, getModelSummary, getDatasetOptions, discoverPatterns };

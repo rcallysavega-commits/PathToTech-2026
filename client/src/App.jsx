@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './context/AuthContext';
 import { useLocation } from 'react-router-dom';
+import api from './services/api';
 
 // Public Pages
 import LandingPage from './pages/LandingPage';
@@ -109,6 +111,11 @@ function AppRoutes() {
 }
 
 export default function App() {
+  useEffect(() => {
+    // Silently wake up the ML service on Render free tier (fires and forgets)
+    api.get('/ml/ping').catch(() => {});
+  }, []);
+
   return (
     <BrowserRouter>
       <AuthProvider>
