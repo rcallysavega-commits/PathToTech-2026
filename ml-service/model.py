@@ -3092,6 +3092,8 @@ def save_model(path: str = "saved_model.pkl") -> bool:
         "training_transactions": training_transactions,
         "gmm_selection_scores": gmm_selection_scores,
         "dataset_path": dataset_path,
+        "runtime_feature_names": runtime_feature_names,
+        "runtime_feature_defaults": runtime_feature_defaults,
     }
     with open(path, "wb") as f:
         import pickle
@@ -3114,7 +3116,7 @@ def load_model(path: str = "saved_model.pkl") -> bool:
         global job_level_lookup, training_feature_matrix, training_cluster_assignments
         global training_cluster_probabilities, training_employability_scores
         global training_employment_targets, training_job_types, training_transactions
-        global gmm_selection_scores, dataset_path
+        global gmm_selection_scores, dataset_path, runtime_feature_names, runtime_feature_defaults
         gmm_model = state["gmm_model"]
         scaler = state["scaler"]
         training_info = state["training_info"]
@@ -3138,6 +3140,8 @@ def load_model(path: str = "saved_model.pkl") -> bool:
         training_transactions = state.get("training_transactions", [])
         gmm_selection_scores = state.get("gmm_selection_scores", [])
         dataset_path = state.get("dataset_path", "")
+        runtime_feature_names = state.get("runtime_feature_names", RUNTIME_BASE_FEATURE_NAMES.copy())
+        runtime_feature_defaults = state.get("runtime_feature_defaults", {name: 0.0 for name in runtime_feature_names})
         return True
     except Exception as exc:
         import logging
