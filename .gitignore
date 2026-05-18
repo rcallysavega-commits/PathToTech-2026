@@ -1,20 +1,27 @@
-﻿# Environment files
+﻿# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment variables
 .env
+**/.env
 server/.env
 client/.env
 ml-service/.env
 
-# Dependencies
-node_modules/
+# Python virtual environments
 .venv/
+**/.venv/
+.venv312/
+**/.venv312/
 __pycache__/
+**/__pycache__/
 *.pyc
 *.pyo
 
-# Build outputs
+# Build output
+client/dist/
 dist/
-build/
-*.egg-info/
 
 # Logs
 *.log
@@ -24,6 +31,6 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
-# Uploads (user-generated)
+# Uploads (runtime data)
 server/uploads/certifications/*
 !server/uploads/certifications/.gitkeep
