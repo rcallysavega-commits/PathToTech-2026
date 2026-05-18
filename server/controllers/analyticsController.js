@@ -489,7 +489,7 @@ const getModelVisualizations = async (req, res) => {
     // Fetch GMM visualization data from ML service
     let gmmVisualization = { points: [], ellipses: [], explainedVariance: [0, 0] };
     try {
-      const gmmRes = await axios.get(`${ML_URL}/gmm-visualization`);
+      const gmmRes = await axios.get(`${ML_URL}/gmm-visualization`, { timeout: 60000 });
       if (gmmRes.data?.points) {
         gmmVisualization = {
           points: Array.isArray(gmmRes.data.points) ? gmmRes.data.points : [],
@@ -504,7 +504,7 @@ const getModelVisualizations = async (req, res) => {
     // Fetch AIC/BIC data from ML service
     let aicBicData = [];
     try {
-      const modelRes = await axios.get(`${ML_URL}/model-summary`);
+      const modelRes = await axios.get(`${ML_URL}/model-summary`, { timeout: 60000 });
       const selectionCandidates = Array.isArray(modelRes.data?.gmm_selection?.candidates)
         ? modelRes.data.gmm_selection.candidates
         : [];
@@ -531,7 +531,7 @@ const getModelVisualizations = async (req, res) => {
         minConfidence: 0.6,
         maxItemsetSize: 3,
         topK: 20,
-      });
+      }, { timeout: 90000 });
       if (Array.isArray(rulesRes.data?.associationRules)) {
         const rules = rulesRes.data.associationRules;
         // Transform rules into nodes for visualization
@@ -571,7 +571,7 @@ const getModelVisualizations = async (req, res) => {
     };
 
     try {
-      const perfRes = await axios.get(`${ML_URL}/model-performance`);
+      const perfRes = await axios.get(`${ML_URL}/model-performance`, { timeout: 90000 });
       const perf = perfRes.data || {};
 
       if (perf?.available) {
