@@ -4,7 +4,7 @@ const ML_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
 
 const proxyMLRequest = async (endpoint, res) => {
   try {
-    const response = await axios.get(`${ML_URL}${endpoint}`, { timeout: 15000 });
+    const response = await axios.get(`${ML_URL}${endpoint}`, { timeout: 60000 });
     return res.status(200).json({ success: true, data: response.data });
   } catch (error) {
     console.error(`ML proxy error for ${endpoint}:`, error.message);
@@ -31,7 +31,7 @@ const getDatasetOptions = (req, res) => proxyMLRequest('/dataset-options', res);
 // POST /api/ml/patterns/discover
 const discoverPatterns = async (req, res) => {
   try {
-    const response = await axios.post(`${ML_URL}/patterns/discover`, req.body || {}, { timeout: 30000 });
+    const response = await axios.post(`${ML_URL}/patterns/discover`, req.body || {}, { timeout: 90000 });
     return res.status(200).json({ success: true, data: response.data });
   } catch (error) {
     console.error('ML proxy error for /patterns/discover:', error.response?.data || error.message);

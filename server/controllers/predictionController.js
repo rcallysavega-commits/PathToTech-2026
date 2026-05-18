@@ -200,7 +200,7 @@ const buildPredictionForStudentNumber = async (studentNumber) => {
   // Call ML service
   let mlResult;
   try {
-    const response = await axios.post(`${ML_URL}/predict`, payload, { timeout: 30000 });
+    const response = await axios.post(`${ML_URL}/predict`, payload, { timeout: 90000 });
     mlResult = response.data;
   } catch (mlErr) {
     const err = new Error('ML prediction service is unavailable. Please try again later.');
