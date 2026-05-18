@@ -21,6 +21,8 @@ const parseAllowedOrigins = () => {
 const staticAllowedOrigins = [
   'https://path-to-tech-2026.vercel.app',
   'https://www.path-to-tech-2026.vercel.app',
+  'https://path-to-tech-dcs.vercel.app',
+  'https://www.path-to-tech-dcs.vercel.app',
   'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:5175',
@@ -34,7 +36,7 @@ const isAllowedOrigin = (origin = '') => {
   if (allowedOrigins.includes(normalizedOrigin)) return true;
 
   // Allow Vercel preview/prod deployments for this project.
-  if (/^https:\/\/path-to-tech-2026(?:-[a-z0-9-]+)?\.vercel\.app$/i.test(normalizedOrigin)) return true;
+  if (/^https:\/\/path-to-tech-(?:2026|dcs)(?:-[a-z0-9-]+)?\.vercel\.app$/i.test(normalizedOrigin)) return true;
 
   return false;
 };
