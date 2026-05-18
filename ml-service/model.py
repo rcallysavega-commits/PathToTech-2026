@@ -2293,15 +2293,33 @@ def _compute_student_rule_sum(student_skills: list[str], has_cert: bool, employa
     )
     return float(np.sum(rule_vector))
 
-def _rank_jobs_by_cosine(student_es_score: float, n_components: int, student_cluster_probs: np.ndarray | None = None) -> list[tuple[str, float, float]]:
+def _rank_jobs_by_cosine(
+    n_components: int,
+    student_cluster_probs: np.ndarray,
+    student_rule_vector: np.ndarray | None = None,
+) -> list[tuple[str, float, float]]:
+    """
+    Rank jobs by cosine similarity between the student's K-dimensional Employability Score
+    vector (ES_vec) and each job's K-dimensional Job Score vector (JS_vec).
+
+    Thesis formula:
+      ES_vec[k] = α × γ_ki × w_k  +  (1-α) × student_rule_k
+      JS_vec[k] = β × p_kj × w_k  +  (1-β) × rule_strength_kj
+      similarity = cosine(ES_vec, JS_vec)
+
+    where γ_ki is the student's GMM responsibility for cluster k (unique per student),
+    w_k is the global cluster quality weight, p_kj is the job's cluster profile,
+    and rule_strength_kj is the ECLAT rule strength per cluster for job j.
+    """
     ranked: list[tuple[str, float, float]] = []
-    # Use the student's own cluster probabilities so rankings are personalised.
-    # Fall back to global cluster_weights only when probs are unavailable.
-    if student_cluster_probs is not None and student_cluster_probs.size == n_components:
-        weight_vec = student_cluster_probs.astype(float)
+    weight_vec = np.array([cluster_weights.get(i, 0.0) for i in range(n_components)], dtype=float)
+
+    # Build K-dimensional ES vector for this student
+    # ES_vec[k] = α × γ_ki × w_k  +  (1−α) × student_rule_k
+    if student_rule_vector is not None and student_rule_vector.size == n_components:
+        es_vec = (ES_ALPHA * (student_cluster_probs * weight_vec)) + ((1.0 - ES_ALPHA) * student_rule_vector)
     else:
-        weight_vec = np.array([cluster_weights.get(i, 0.0) for i in range(n_components)], dtype=float)
-    student_profile_vec = np.array([student_es_score], dtype=float)
+        es_vec = student_cluster_probs * weight_vec
 
     for job, profile in job_cluster_profiles.items():
         if job in INVALID_JOB_TYPES:
@@ -2310,21 +2328,17 @@ def _rank_jobs_by_cosine(student_es_score: float, n_components: int, student_clu
         if profile_vec.size != n_components:
             continue
         rule_vec = np.array(job_rule_strengths.get(job, np.zeros(n_components, dtype=float)), dtype=float)
-        # GMM term: dot product of job's cluster profile with student's cluster probabilities.
-        # Higher when the student's dominant clusters match this job's typical clusters.
-        gmm_term = float(np.dot(profile_vec, weight_vec))
-        # ECLAT term: rule strengths weighted by student's cluster probabilities.
-        # Higher when this job's ECLAT rules are strong in the student's probable clusters.
-        eclat_term = float(np.dot(rule_vec, weight_vec))
-        # Job Recommendation Score Formula (hybrid GMM + ECLAT)
-        # job_score = (JS_BETA * gmm_term) + ((1.0 - JS_BETA) * eclat_term)
-        # JS_BETA = 0.7: Weights GMM at 70% and ECLAT at 30% for balanced job ranking
-        job_score = (JS_BETA * gmm_term) + ((1.0 - JS_BETA) * eclat_term)
-        job_vec = np.array([job_score], dtype=float)
-        similarity = _cosine_similarity(student_profile_vec, job_vec)
+        # Build K-dimensional JS vector for this job (thesis formula)
+        # JS_vec[k] = β × p_kj × w_k  +  (1−β) × rule_strength_kj
+        js_vec = (JS_BETA * (profile_vec * weight_vec)) + ((1.0 - JS_BETA) * rule_vec)
+        # Cosine similarity between K-dim ES and JS vectors
+        similarity = _cosine_similarity(es_vec, js_vec)
+        # Keep scalar job score for display/logging (sum of JS_vec)
+        job_score = float(np.sum(js_vec))
         ranked.append((job, similarity, job_score))
 
-    ranked.sort(key=lambda item: (-item[2], item[0]))
+    # Primary rank: cosine similarity (higher = better match for this student)
+    ranked.sort(key=lambda item: (-item[1], -item[2], item[0]))
     return ranked
 
 
@@ -2453,16 +2467,17 @@ def predict(input_data: dict) -> dict:
         if n_components > 0:
             cluster_probs[cluster_id] = 1.0
 
-    student_rule_sum = _compute_student_rule_sum(
+    student_rule_vector = _build_student_rule_vector(
         student_skills,
         has_cert=bool(student_certifications or cert_count > 0),
         employability_level=status,
         n_components=n_components,
         cluster_probs=cluster_probs,
     )
+    student_rule_sum = float(np.sum(student_rule_vector))
     gmm_contribution = float(np.sum(cluster_probs * weight_vec))
     student_es_score = (ES_ALPHA * gmm_contribution) + ((1.0 - ES_ALPHA) * student_rule_sum)
-    cosine_ranked_jobs = _rank_jobs_by_cosine(student_es_score, n_components, cluster_probs)
+    cosine_ranked_jobs = _rank_jobs_by_cosine(n_components, cluster_probs, student_rule_vector)
 
     job_recommendations = [job for job, _, _ in cosine_ranked_jobs[:5]]
     if not job_recommendations:
