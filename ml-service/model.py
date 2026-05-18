@@ -113,6 +113,7 @@ status_low_threshold: float = 0.33
 status_high_threshold: float = 0.66
 runtime_feature_names: list[str] = RUNTIME_BASE_FEATURE_NAMES.copy()
 runtime_feature_defaults: dict[str, float] = {name: 0.0 for name in RUNTIME_BASE_FEATURE_NAMES}
+cached_model_performance: dict | None = None
 LOCAL_JOB_NEIGHBOR_COUNT = 10
 job_type_model = None
 job_type_encoder = None
@@ -1767,6 +1768,10 @@ def load_and_train(data_path: str):
         ],
     }
 
+    # Pre-compute and cache model performance (K-Fold CV) so requests are instant
+    global cached_model_performance
+    cached_model_performance = _cross_validated_model_performance()
+
     return training_info
 
 
@@ -3006,7 +3011,8 @@ def get_model_performance_data() -> dict:
             "rocCurve": [],
             "rocMeta": {"available": False, "reason": "Model is not fully trained yet."},
         }
-
+    if cached_model_performance is not None:
+        return cached_model_performance
     return _cross_validated_model_performance()
 
 
@@ -3094,6 +3100,7 @@ def save_model(path: str = "saved_model.pkl") -> bool:
         "dataset_path": dataset_path,
         "runtime_feature_names": runtime_feature_names,
         "runtime_feature_defaults": runtime_feature_defaults,
+        "cached_model_performance": cached_model_performance,
     }
     with open(path, "wb") as f:
         import pickle
@@ -3116,7 +3123,7 @@ def load_model(path: str = "saved_model.pkl") -> bool:
         global job_level_lookup, training_feature_matrix, training_cluster_assignments
         global training_cluster_probabilities, training_employability_scores
         global training_employment_targets, training_job_types, training_transactions
-        global gmm_selection_scores, dataset_path, runtime_feature_names, runtime_feature_defaults
+        global gmm_selection_scores, dataset_path, runtime_feature_names, runtime_feature_defaults, cached_model_performance
         gmm_model = state["gmm_model"]
         scaler = state["scaler"]
         training_info = state["training_info"]
@@ -3142,6 +3149,7 @@ def load_model(path: str = "saved_model.pkl") -> bool:
         dataset_path = state.get("dataset_path", "")
         runtime_feature_names = state.get("runtime_feature_names", RUNTIME_BASE_FEATURE_NAMES.copy())
         runtime_feature_defaults = state.get("runtime_feature_defaults", {name: 0.0 for name in runtime_feature_names})
+        cached_model_performance = state.get("cached_model_performance", None)
         return True
     except Exception as exc:
         import logging
