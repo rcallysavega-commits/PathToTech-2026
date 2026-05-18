@@ -35,7 +35,7 @@ def _train_model_on_startup():
 async def lifespan(app: FastAPI):
     logger.info("PathToTech ML Service starting up...")
     # Avoid blocking web server startup on heavy training so Render can detect an open port.
-    threading.Thread(target=_train_model_on_startup, daemon=True).start()
+    threading.Thread(target=_train_model_on_startup, daemon=False).start()
     yield
     logger.info("ML Service shutting down.")
 
@@ -70,6 +70,7 @@ class PatternDiscoveryRequest(BaseModel):
 
 
 @app.get("/")
+@app.head("/")
 def health():
     return {"status": "ok", "service": "PathToTech ML Service"}
 
