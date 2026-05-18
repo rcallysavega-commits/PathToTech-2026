@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: pathtotech-server
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+      - key: ML_SERVICE_URL
+        sync: false
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: 587
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_NAME
+        sync: false

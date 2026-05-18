@@ -1,0 +1,1515 @@
+═════════════════════════════════════════════════════════════════════════════════
+PATHTOTECH ML-SERVICE: ECLAT AND GMM ALGORITHMS - COMPLETE FORMULA DOCUMENTATION
+═════════════════════════════════════════════════════════════════════════════════
+
+Prepared: May 7, 2026
+Algorithms: ECLAT (Equivalence Class Clustering and Bottom-up Lattice Traversal)
+            GMM (Gaussian Mixture Model)
+Dataset: ml-service/dataset/employability.csv
+
+
+═════════════════════════════════════════════════════════════════════════════════
+SECTION 1: DATASET STRUCTURE AND SOURCE COLUMNS
+═════════════════════════════════════════════════════════════════════════════════
+
+DATASET FILE: employability.csv
+FORMAT: CSV (Comma-Separated Values)
+LOCATION: c:\Users\ACER\Dropbox\Projects\PathToTech\ml-service\dataset\employability.csv
+
+1.1 DATASET COLUMNS (18 total columns)
+────────────────────────────────────────
+
+Row Index | Column Name                 | Data Type | Range      | Purpose
+──────────┼─────────────────────────────┼───────────┼────────────┼──────────────────────────
+1         | gwa                         | Float     | 1.0 - 5.0  | Grade-Weighted Average (inverse scale)
+2         | total_units                 | Integer   | 100 - 160  | Total coursework units taken
+3         | professional_ethics         | Integer   | 1 - 5      | Survey: Professional Ethics Score
+4         | scientific_spirit           | Integer   | 1 - 5      | Survey: Scientific Spirit Score
+5         | humanistic_quality          | Integer   | 1 - 5      | Survey: Humanistic Quality Score
+6         | computer_cognition          | Integer   | 1 - 5      | Survey: Computer Cognition Score
+7         | software_design             | Integer   | 1 - 5      | Survey: Software Design Score
+8         | system_usage                | Integer   | 1 - 5      | Survey: System Usage Score
+9         | sustainable_development     | Integer   | 1 - 5      | Survey: Sustainable Development Score
+10        | team_capacity               | Integer   | 1 - 5      | Survey: Team Capacity Score
+11        | job_application             | Integer   | 1 - 5      | Survey: Job Application Score
+12        | programming_langs_count     | Integer   | 0 - 10     | Technical: Programming Languages Skills
+13        | web_dev_count               | Integer   | 0 - 10     | Technical: Web Development Skills
+14        | database_count              | Integer   | 0 - 10     | Technical: Database Skills
+15        | tools_count                 | Integer   | 0 - 10     | Technical: Tools & DevOps Skills
+16        | soft_skills_avg             | Float     | 1.0 - 5.0  | Soft Skills Average Score
+17        | certification_count         | Integer   | 0 - 10     | Number of IT Certifications
+18        | employability_label         | Integer   | 0, 1, 2    | Target: 0=Low, 1=Moderate, 2=High
+
+SAMPLE DATA (First 3 rows):
+gwa: 2.34, professional_ethics: 3, programming_langs_count: 5, employability_label: 1
+gwa: 1.8, professional_ethics: 5, programming_langs_count: 7, employability_label: 0
+gwa: 3.6, professional_ethics: 4, programming_langs_count: 0, employability_label: 2
+
+1.2 GMM NUMERIC SOURCE COLUMNS (14 columns)
+────────────────────────────────────────────
+
+The GMM (Gaussian Mixture Model) uses ONLY these numeric, continuous features:
+
+Required Feature Names for GMM (in order):
+1. gwa_norm                    → Normalized GPA (inverse: 5.0-gwa)/4.0
+2. survey_avg                  → Average of 9 survey categories
+3. professional_ethics         → Survey score (1-5 normalized to 0-1)
+4. scientific_spirit           → Survey score (1-5 normalized to 0-1)
+5. humanistic_quality          → Survey score (1-5 normalized to 0-1)
+6. computer_cognition          → Survey score (1-5 normalized to 0-1)
+7. software_design             → Survey score (1-5 normalized to 0-1)
+8. system_usage                → Survey score (1-5 normalized to 0-1)
+9. sustainable_development     → Survey score (1-5 normalized to 0-1)
+10. team_capacity              → Survey score (1-5 normalized to 0-1)
+11. job_application            → Survey score (1-5 normalized to 0-1)
+12. tech_skills_norm           → Normalized technical skills count
+13. soft_skills_avg            → Soft skills average (1-5 normalized to 0-1)
+14. cert_norm                  → Normalized certification count / 5.0
+
+Total Feature Dimension: 14-dimensional vector space
+
+1.3 ECLAT CATEGORICAL SOURCE COLUMNS (8 columns)
+──────────────────────────────────────────────────
+
+The ECLAT (Association Rule Mining) uses categorical data:
+
+1. HaveWorkedWith        → Semicolon-separated list of technical skills
+2. Cert_Types            → Semicolon-separated list of certification types
+3. Job_Type              → Employment track/role (Developer, Data Analyst, etc.)
+4. Major                 → University major/field of study
+5. EdLevel               → Education level (Bachelor, Master, etc.)
+6. Employment            → Employment status (Employed/Unemployed)
+7. Gender (optional)     → Gender information (M/F/Other)
+8. Age (optional)        → Age range (20-25, 26-30, etc.)
+
+ECLAT Transaction Format: Set of tokens (items) per student
+Example transaction: {"skill:python", "skill:react", "job:developer", "cert:has_cert", "level:high_employability"}
+
+1.4 DATA STATISTICS
+────────────────────
+
+Total Students: ~100-500 records (typical range)
+Total Features Used: 14 (GMM numeric)
+Total Transaction Items: ~200-500 unique items (ECLAT)
+Categorical Combinations: ~10,000+ possible rules
+
+Dataset Min/Max Values:
+- GPA (gwa): 1.0 (best) to 5.0 (worst)
+- Survey Scores: 1 (low) to 5 (high)
+- Technical Skill Counts: 0 to 30+ skills per student
+- Certification Count: 0 to 10+ certifications
+
+
+═════════════════════════════════════════════════════════════════════════════════
+SECTION 2: ECLAT ALGORITHM - FORMULAS AND IMPLEMENTATION
+═════════════════════════════════════════════════════════════════════════════════
+
+ECLAT (Equivalence Class Clustering and Bottom-up Lattice Traversal)
+Purpose: Discover frequent itemsets and association rules from student profiles
+Application: Find skill combinations that predict job types and employability levels
+
+2.1 ECLAT - CORE FORMULAS
+──────────────────────────
+
+FORMULA 1: Support (for frequent itemsets)
+─────────────────────────────────────────
+    support(I) = |T_I| / n_total
+
+Where:
+    I = Itemset (e.g., {"skill:python", "skill:react"})
+    T_I = Set of transaction IDs containing all items in I
+    n_total = Total number of transactions
+    |T_I| = Cardinality (count) of transaction set
+
+Range: [0, 1] (0% to 100%)
+Interpretation: Fraction of all students who have this itemset
+Minimum Support Threshold: 0.02 (2% of all students)
+
+Example:
+    If 10 out of 500 students have skills "Python" AND "React"
+    support("Python" ∩ "React") = 10 / 500 = 0.02 (2%)
+
+
+FORMULA 2: Confidence (for association rules)
+───────────────────────────────────────────────
+    confidence(A → C) = support(A ∪ C) / support(A)
+                      = P(Consequent | Antecedent)
+
+Where:
+    A = Antecedent (conditions: e.g., skills, certifications)
+    C = Consequent (prediction: e.g., job type)
+    support(A ∪ C) = Fraction with both A and C
+    support(A) = Fraction with A
+
+Range: [0, 1] (0% to 100%)
+Interpretation: If student has A, what's probability they have C?
+Minimum Confidence Threshold: 0.10 (10%)
+
+Example:
+    Rule: "Python Skills" → "Developer Track"
+    If 80 students have Python AND are Developers
+    If 100 students have Python (regardless of role)
+    confidence = 80 / 100 = 0.80 (80% of Python students become developers)
+
+
+FORMULA 3: Lift (strength/interestingness of rules)
+──────────────────────────────────────────────────
+    lift(A → C) = confidence(A → C) / support(C)
+                = P(C | A) / P(C)
+                = [support(A ∪ C) / support(A)] / [support(C) / n_total]
+
+Where:
+    confidence(A → C) = From Formula 2 above
+    support(C) = Fraction of transactions containing C
+    support(A ∪ C) / support(A) / support(C) = Normalized
+
+Range: [0, ∞) (theoretically unbounded)
+Interpretation:
+    lift = 1: A and C are independent (no association)
+    lift > 1: A and C are positively associated (rule is interesting)
+    lift < 1: A and C are negatively associated (rare combination)
+
+Example:
+    Rule: "Web Development" → "Data Analyst Track"
+    If support(Web Dev) = 0.30 (30% have this skill)
+    If support(Data Analyst) = 0.20 (20% target this track)
+    If support(Web Dev ∪ Data Analyst) = 0.08 (8% have both)
+    
+    confidence = 0.08 / 0.30 = 0.267 (26.7%)
+    lift = 0.267 / 0.20 = 1.33
+    
+    Interpretation: Students with Web Dev are 1.33x more likely to want Data Analyst role
+
+2.2 ECLAT - ALGORITHM PSEUDOCODE
+─────────────────────────────────
+
+function _eclat(prefix, prefix_tidset, items, min_support, max_itemset_size):
+    for each item in items:
+        next_tidset = intersection of prefix_tidset with item's transaction set
+        support_count = size of next_tidset
+        
+        if support_count >= min_support:
+            next_prefix = prefix + item
+            ADD (next_prefix, support_count) to results
+            
+            if length(next_prefix) < max_itemset_size:
+                suffix = find all items in items that can extend next_prefix
+                if suffix not empty:
+                    RECURSIVELY call _eclat with next_prefix
+
+Time Complexity: O(n * 2^m) where n=transactions, m=items (exponential)
+Space Complexity: O(m) for prefix tracking
+
+2.3 ECLAT - IMPLEMENTATION IN PATHTOTECH
+──────────────────────────────────────────
+
+STEP 1: Build Transaction Set
+──────────────────────────────
+For each student row in dataset:
+    - Extract skill tokens: skill:python, skill:react, etc.
+    - Extract job type: job:developer, job:data_analyst, etc.
+    - Extract employment level: level:high_employability, level:low_employability
+    - Extract certifications: cert:has_cert or cert:no_cert
+    - Add all tokens to a transaction (set of items)
+
+Example Student Transaction:
+    {"skill:python", "skill:react_js", "skill:nodejs", 
+     "job:developer", 
+     "level:high_employability",
+     "cert:has_cert"}
+
+STEP 2: Mine Frequent Itemsets
+───────────────────────────────
+Input Parameters:
+    - min_support = 0.02 (2% of 500 = 10 students minimum)
+    - max_itemset_size = 3 (find itemsets of size 1, 2, 3)
+    - top_k = 20 (return top 20 rules)
+
+Process:
+    1. Count each item's transaction ID set
+    2. Filter items appearing in ≥ 10 transactions
+    3. Use ECLAT recursion to build larger itemsets
+    4. Track support count for each itemset
+
+STEP 3: Generate Association Rules
+──────────────────────────────────
+For each 2+ item itemset:
+    For each possible consequent in itemset:
+        antecedent = all other items
+        
+        Calculate:
+            confidence = support(A ∪ C) / support(A)
+            lift = confidence / support(C)
+        
+        If confidence ≥ 0.10 (min threshold):
+            ADD rule to results
+
+STEP 4: Cluster-Specific Rules (Optional)
+──────────────────────────────────────────
+Repeat ECLAT process for each GMM cluster separately:
+    - Only use transactions from students in that cluster
+    - Lower support threshold: 0.02 (2% of cluster size)
+    - Extract rules specific to each cluster (5 clusters = 5 rule sets)
+
+2.4 ECLAT - OUTPUT STRUCTURE
+────────────────────────────
+
+Frequent Itemsets Output:
+{
+    "items": ["skill:python", "skill:react_js"],
+    "supportCount": 15,
+    "support": 0.03
+}
+
+Association Rules Output:
+{
+    "antecedent": ["skill:python", "skill:react_js"],
+    "consequent": "job:developer",
+    "support": 0.025,          # support(A ∪ C) = 2.5%
+    "confidence": 0.833,        # P(C | A) = 83.3%
+    "lift": 1.67                # 1.67x more likely
+}
+
+2.5 ECLAT - USAGE IN RECOMMENDATIONS
+─────────────────────────────────────
+
+Top Rules Discovered (Example):
+────────────────────────────────
+
+Rule 1: {"skill:python", "skill:sql"} → "Data Analyst Track"
+    Support: 0.045 (4.5% of all students)
+    Confidence: 0.75 (75% with both skills become data analysts)
+    Lift: 3.2 (3.2x more likely than random)
+    
+    Action: RECOMMEND "Data Analyst Track" to students with Python + SQL skills
+
+Rule 2: {"cert:has_cert"} → "Developer Track"
+    Support: 0.080 (8% of all students)
+    Confidence: 0.68 (68% with certs become developers)
+    Lift: 1.5 (1.5x more likely)
+    
+    Action: RECOMMEND "Developer Track" to students with certifications
+
+Rule 3: {"skill:react_js"} → "High Employability"
+    Support: 0.025 (2.5% of all students)
+    Confidence: 0.82 (82% with React have high employability)
+    Lift: 2.1 (2.1x more likely)
+    
+    Action: PRIORITIZE React learning for employability boost
+
+
+═════════════════════════════════════════════════════════════════════════════════
+SECTION 3: GAUSSIAN MIXTURE MODEL (GMM) - FORMULAS AND IMPLEMENTATION
+═════════════════════════════════════════════════════════════════════════════════
+
+GMM (Gaussian Mixture Model)
+Purpose: Cluster students into employability groups and determine individual scores
+Application: Segment students into 5 tracks; predict employability level
+
+3.1 GMM - CORE FORMULAS
+───────────────────────
+
+FORMULA 1: Gaussian Probability Density Function (PDF)
+────────────────────────────────────────────────────────
+    𝒩(x | μ_k, Σ_k) = 1 / √[(2π)^d |Σ_k|] × exp(-½(x - μ_k)^T Σ_k^(-1) (x - μ_k))
+
+Where:
+    x = Feature vector (14-dimensional student profile)
+    μ_k = Mean vector of cluster k
+    Σ_k = Covariance matrix of cluster k
+    d = Number of dimensions (14)
+    |Σ_k| = Determinant of covariance matrix
+    ^T = Transpose operator
+
+Interpretation: Probability that student profile x belongs to cluster k
+Range: (0, 1) continuous
+
+Example:
+    Student: gwa_norm=0.3, survey_avg=0.7, tech_skills=0.5, ...
+    Cluster 1 (High Employability): μ=[0.4, 0.8, 0.6, ...], high Σ
+    Probability = 0.25 (25% likely to be in this cluster)
+
+
+FORMULA 2: Mixture Probability
+───────────────────────────────
+    P(x) = Σ_k π_k × 𝒩(x | μ_k, Σ_k)
+
+Where:
+    π_k = Mixing coefficient (weight) for cluster k
+    Σ π_k = 1.0 (weights sum to 1)
+    K = Number of clusters (5)
+    
+    P(x) = π_1×𝒩(x|μ_1,Σ_1) + π_2×𝒩(x|μ_2,Σ_2) + ... + π_5×𝒩(x|μ_5,Σ_5)
+
+Interpretation: Total probability student belongs to ANY cluster
+Range: (0, 1] (must be ≤ 1)
+
+Example:
+    P(student x) = 0.1×N(x|C1) + 0.2×N(x|C2) + 0.3×N(x|C3) + 0.25×N(x|C4) + 0.15×N(x|C5)
+                 = 0.1×0.3 + 0.2×0.1 + 0.3×0.5 + 0.25×0.05 + 0.15×0.0
+                 = 0.03 + 0.02 + 0.15 + 0.0125 + 0
+                 = 0.2125
+
+
+FORMULA 3: Responsibility (Posterior Probability)
+──────────────────────────────────────────────────
+    r_k(x) = P(k | x) = π_k × 𝒩(x | μ_k, Σ_k) / P(x)
+
+Where:
+    r_k(x) = Responsibility of cluster k for data point x
+    P(x) = Mixture probability (Formula 2)
+    Range: (0, 1) per cluster, Σ_k r_k(x) = 1.0
+
+Interpretation: After seeing data x, probability it's from cluster k
+Used for: Soft clustering (probabilistic assignment)
+
+Example:
+    For student x and 5 clusters:
+    r_1(x) = 0.35 (35% likely from cluster 1)
+    r_2(x) = 0.25 (25% likely from cluster 2)
+    r_3(x) = 0.20 (20% likely from cluster 3)
+    r_4(x) = 0.15 (15% likely from cluster 4)
+    r_5(x) = 0.05 (5% likely from cluster 5)
+    Sum = 1.0 ✓
+
+
+FORMULA 4: Log-Likelihood (GMM objective function)
+────────────────────────────────────────────────────
+    log L = Σ_n log(P(x_n))
+          = Σ_n log(Σ_k π_k × 𝒩(x_n | μ_k, Σ_k))
+
+Where:
+    n = Student index
+    N = Total number of students
+    
+Interpretation: How well GMM explains the training data
+Goal: MAXIMIZE log-likelihood (minimize negative log-likelihood)
+Range: Negative infinity to 0 (closer to 0 is better)
+
+Example:
+    If log L = -1,234.56, this indicates the model fit
+
+
+FORMULA 5: AIC (Akaike Information Criterion) - Model Complexity Penalty
+──────────────────────────────────────────────────────────────────────────
+    AIC = -2 × log L + 2 × p
+
+Where:
+    log L = Log-likelihood (Formula 4)
+    p = Number of parameters
+    
+    For GMM: p = K × (d + d×(d+1)/2 + 1) - 1
+           = K clusters × (means + covariance + weight)
+    
+    With K=5, d=14: p ≈ 5 × (14 + 105 + 1) - 1 = 595 parameters
+
+Interpretation: Balance between model fit and complexity
+Goal: MINIMIZE AIC (prefer simpler models that fit well)
+Usage: Used to select optimal number of clusters (K)
+
+Example:
+    K=3: AIC = 2,100 (underfitting)
+    K=5: AIC = 1,850 (optimal)
+    K=8: AIC = 1,920 (overfitting)
+    Choose K=5
+
+
+FORMULA 6: BIC (Bayesian Information Criterion) - Stronger Complexity Penalty
+─────────────────────────────────────────────────────────────────────────────
+    BIC = -2 × log L + p × ln(n)
+
+Where:
+    log L = Log-likelihood
+    p = Number of parameters
+    n = Number of training samples
+    ln(n) = Natural log of sample size (penalty grows with data)
+
+Interpretation: Like AIC but penalizes complexity more strongly
+Goal: MINIMIZE BIC
+Usage: Preferred over AIC for larger datasets; used in PathToTech
+
+Example (n=500):
+    K=3: BIC = 2,100 + 595×ln(500) = 2,100 + 595×6.21 = 4,796 (bad)
+    K=5: BIC = 1,850 + 595×ln(500) = 1,850 + 3,695 = 5,545 (okay)
+    K=7: BIC = 2,000 + 595×ln(500) = 5,695 (worse)
+
+
+FORMULA 7: Silhouette Score (Cluster Quality)
+──────────────────────────────────────────────
+    s(x) = (b(x) - a(x)) / max(a(x), b(x))
+
+Where:
+    a(x) = Average distance from x to other points in its cluster
+    b(x) = Minimum average distance from x to points in other clusters
+    
+    s(x) ∈ [-1, 1]
+    -1 = Point is in wrong cluster
+     0 = Point on cluster boundary
+     1 = Point deep in cluster
+
+Overall Silhouette Score = Mean of s(x) for all points
+
+Interpretation: Higher silhouette = better separated, more cohesive clusters
+Goal: MAXIMIZE silhouette score (range -1 to 1, higher is better)
+
+Example:
+    Cluster 1 (Tight, well-separated): silhouette = 0.72
+    Cluster 2 (Loose, overlapping): silhouette = 0.31
+    Cluster 3 (Tight, well-separated): silhouette = 0.68
+    Overall average: 0.57 (Good clustering)
+
+
+FORMULA 8: Cross-Validated Negative Log-Likelihood
+────────────────────────────────────────────────────
+    CV-NLL = -1/n_test × Σ log(P(x_test | GMM_trained))
+
+Where:
+    n_test = Number of test samples
+    P(x_test | GMM) = Probability of test data given trained GMM
+    
+    Process:
+    1. Split data into 5 folds (80% train, 20% test)
+    2. Train GMM on each fold's training set
+    3. Evaluate negative log-likelihood on test set
+    4. Average NLL across all 5 folds
+    
+    Reported as: mean ± std
+
+Interpretation: Generalization error (lower is better)
+Goal: MINIMIZE CV-NLL; std should be small (consistent performance)
+
+Example:
+    Fold 1: NLL = 2.45
+    Fold 2: NLL = 2.38
+    Fold 3: NLL = 2.41
+    Fold 4: NLL = 2.39
+    Fold 5: NLL = 2.43
+    
+    Mean NLL = 2.412 ± 0.024
+    Interpretation: Model generalizes well (low std)
+
+
+FORMULA 9: Cluster Quality Score (for employability level assignment)
+──────────────────────────────────────────────────────────────────────
+    quality_k = 0.30 × gwa_norm + 0.25 × survey_avg + 0.20 × tech_skills_norm 
+              + 0.15 × soft_skills_avg + 0.10 × cert_norm
+
+Where:
+    All values are normalized to [0, 1]
+    gwa_norm = (5.0 - gwa) / 4.0 (inverse: lower GPA = higher score)
+    survey_avg = mean of 9 survey categories (1-5 scale, divided by 5)
+    tech_skills_norm = count of skills / 40
+    soft_skills_avg = average soft skills / 5.0
+    cert_norm = certification count / 5
+    
+Weights:
+    30% = Academic Performance (GPA/GWA)
+    25% = Survey Competencies
+    20% = Technical Skills
+    15% = Soft Skills
+    10% = Certifications
+    ────
+    100% Total
+
+Interpretation: Weighted average indicating cluster's average employability
+Range: [0, 1]
+Used for: Assigning "Low", "Moderate", or "High" employability labels
+
+Example:
+    Cluster 1: quality = 0.30×0.6 + 0.25×0.7 + 0.20×0.4 + 0.15×0.8 + 0.10×0.3
+             = 0.18 + 0.175 + 0.08 + 0.12 + 0.03 = 0.585
+    Cluster 2: quality = 0.30×0.2 + 0.25×0.3 + 0.20×0.1 + 0.15×0.2 + 0.10×0.1
+             = 0.06 + 0.075 + 0.02 + 0.03 + 0.01 = 0.195
+    Cluster 3: quality = 0.30×0.9 + 0.25×0.85 + 0.20×0.8 + 0.15×0.9 + 0.10×0.7
+             = 0.27 + 0.2125 + 0.16 + 0.135 + 0.07 = 0.8475
+    
+    Ranking: C3 (0.85) > C1 (0.58) > C2 (0.19)
+    Labels: C3=High, C1=Moderate, C2=Low
+
+
+FORMULA 10: Cluster Weight (for ensemble predictions)
+───────────────────────────────────────────────────────
+    weight_k = shifted_quality_k / Σ shifted_qualities
+
+Where:
+    shifted_quality_k = quality_k - min_quality + 1e-6
+    (Ensures all weights positive)
+    
+    Σ weight_k = 1.0 (weights sum to 1)
+
+Interpretation: Relative importance of each cluster in final prediction
+Used for: Weighted ensemble when combining cluster predictions
+
+Example (5 clusters, shifted qualities):
+    Cluster 1: shifted = 0.585 - 0.195 + 0.000001 = 0.390
+    Cluster 2: shifted = 0.195 - 0.195 + 0.000001 = 0.000001
+    Cluster 3: shifted = 0.8475 - 0.195 + 0.000001 = 0.653
+    Cluster 4: shifted = 0.421 - 0.195 + 0.000001 = 0.226
+    Cluster 5: shifted = 0.310 - 0.195 + 0.000001 = 0.115
+    
+    Sum = 1.384
+    
+    Weights:
+    w1 = 0.390 / 1.384 = 0.282 (28.2%)
+    w2 = 0.000001 / 1.384 ≈ 0.0% (essentially zero)
+    w3 = 0.653 / 1.384 = 0.472 (47.2%)
+    w4 = 0.226 / 1.384 = 0.163 (16.3%)
+    w5 = 0.115 / 1.384 = 0.083 (8.3%)
+    Sum = 1.0 ✓
+
+
+FORMULA 11: Overall Employability Score (Simple)
+──────────────────────────────────────────────────
+    score = (academic × 0.30 + survey × 0.25 + skills × 0.20 
+           + soft × 0.15 + cert × 0.10) × 100
+
+Where:
+    academic = (5.0 - gwa) / 4.0 (inverse GPA, normalized)
+    survey = survey_avg / 5.0
+    skills = min(tech_skills_count / 40.0, 1.0)
+    soft = soft_skills_avg / 5.0
+    cert = min(cert_count / 5.0, 1.0)
+    
+Range: [0, 100]
+Interpretation: Overall employability percentage
+
+Example:
+    Student: gwa=2.5, survey=4.0, tech_count=15, soft=3.5, cert=2
+    
+    academic = (5.0 - 2.5) / 4.0 = 0.625
+    survey = 4.0 / 5.0 = 0.8
+    skills = min(15 / 40.0, 1.0) = 0.375
+    soft = 3.5 / 5.0 = 0.7
+    cert = min(2 / 5.0, 1.0) = 0.4
+    
+    score = (0.625×0.30 + 0.8×0.25 + 0.375×0.20 + 0.7×0.15 + 0.4×0.10) × 100
+          = (0.1875 + 0.2 + 0.075 + 0.105 + 0.04) × 100
+          = 0.6075 × 100
+          = 60.75 (out of 100)
+
+
+3.2 GMM - EXPECTATION-MAXIMIZATION ALGORITHM
+──────────────────────────────────────────────
+
+EM Algorithm Overview (iterations to converge):
+
+STEP 1: Initialize (Iteration 0)
+    - Start with K=5 clusters
+    - Initialize μ_k as random data points (or k-means initialization)
+    - Initialize Σ_k as identity matrices
+    - Initialize π_k = 1/K = 0.2 (uniform weights)
+
+STEP 2: E-Step (Expectation)
+    For each training sample x_n:
+        For each cluster k:
+            Calculate r_k(x_n) = π_k × 𝒩(x_n | μ_k, Σ_k) / P(x_n)
+            (Update responsibility of each cluster for this point)
+    
+    Calculate log-likelihood = Σ_n log(P(x_n))
+
+STEP 3: M-Step (Maximization)
+    For each cluster k:
+        Calculate new parameters based on responsibilities:
+        
+        N_k = Σ_n r_k(x_n)  (effective number of points in cluster)
+        
+        μ_k_new = (1/N_k) × Σ_n r_k(x_n) × x_n
+        (Weighted mean: points with high responsibility contribute more)
+        
+        Σ_k_new = (1/N_k) × Σ_n r_k(x_n) × (x_n - μ_k_new)(x_n - μ_k_new)^T
+        (Weighted covariance)
+        
+        π_k_new = N_k / N
+        (New weight: fraction of points assigned to cluster)
+
+STEP 4: Check Convergence
+    If |log-likelihood_new - log-likelihood_old| < tolerance:
+        CONVERGED ✓
+    Else:
+        Go to STEP 2 (repeat until convergence)
+
+PathToTech Settings:
+    - Max Iterations: 300
+    - Tolerance: 1e-3 (default scikit-learn)
+    - Multiple Initializations: 5 (try 5 different random starts, pick best)
+    - Covariance Type: "full" (full covariance matrices, not diagonal)
+
+Typical Convergence:
+    Most convergence happens in 10-50 iterations
+    Final ~200 iterations have minimal log-likelihood change
+
+
+3.3 GMM - MODEL SELECTION PROCESS
+──────────────────────────────────
+
+Testing Range: K = 2 to 8 clusters
+
+For each K value:
+    1. Fit GMM with K components
+    2. Calculate AIC = -2*log_L + 2*p
+    3. Calculate BIC = -2*log_L + p*ln(n)
+    4. Check if converged
+    5. Record iteration count
+
+Comparison Table Example (n=500):
+────────────────────────────────
+K  | Log-L    | AIC    | BIC    | Converged | Iterations
+─────────────────────────────────────────────────────────
+2  | -1,800   | 3,700  | 3,850  | Yes       | 45
+3  | -1,200   | 2,500  | 2,700  | Yes       | 62
+4  | -950     | 2,050  | 2,300  | Yes       | 78
+5  | -900     | 1,950  | 2,250  | Yes       | 91   ← SELECTED (lowest BIC)
+6  | -890     | 1,980  | 2,340  | Yes       | 105
+7  | -885     | 2,020  | 2,440  | Yes       | 112
+8  | -883     | 2,080  | 2,560  | Yes       | 128
+
+SELECTION LOGIC:
+    1. Find minimum BIC value (K=5: BIC=2,250)
+    2. If BIC values tied: use AIC as tiebreaker
+    3. Prefer K that balances fit vs. complexity
+    4. Verify convergence (all should be True)
+    5. Final choice: K=5 clusters
+
+3.4 GMM - IMPLEMENTATION IN PATHTOTECH
+───────────────────────────────────────
+
+STEP 1: Feature Normalization
+──────────────────────────────
+Input: Raw 14-dimensional features (different scales)
+    - gwa_norm: [0, 1]
+    - survey_avg: [0, 1]
+    - tech_skills_norm: [0, 1]
+    - etc.
+
+StandardScaler (Zero-mean, Unit Variance):
+    x_scaled = (x - mean) / std_dev
+    
+    For each feature:
+        Calculate mean and std from training data
+        Apply transformation to all samples
+        Result: Mean ≈ 0, Std ≈ 1
+
+Example:
+    Feature: gwa_norm
+    Raw values: [0.1, 0.3, 0.5, 0.4, 0.6, ...]
+    Mean: 0.38, Std: 0.18
+    
+    Scaled:
+    0.1 → (0.1 - 0.38) / 0.18 = -1.56
+    0.3 → (0.3 - 0.38) / 0.18 = -0.44
+    0.5 → (0.5 - 0.38) / 0.18 = 0.67
+    0.4 → (0.4 - 0.38) / 0.18 = 0.11
+    0.6 → (0.6 - 0.38) / 0.18 = 1.22
+
+STEP 2: Fit GMM
+───────────────
+Use EM algorithm (see section 3.2) to train model:
+    - Input: 500 students × 14 features (scaled)
+    - Process: ~100 iterations of E-step and M-step
+    - Output: 5 cluster centers (μ_k), covariances (Σ_k), weights (π_k)
+
+STEP 3: Predict Cluster Assignment
+──────────────────────────────────
+For each student:
+    Calculate responsibility r_k(x) for each cluster k
+    Assign to cluster with highest responsibility
+    
+    cluster_id = arg_max_k r_k(x)
+
+Example:
+    Student responsibilities: [0.02, 0.08, 0.65, 0.20, 0.05]
+    Assigned to cluster: 3 (65% probability)
+
+STEP 4: Get Probability Estimates
+──────────────────────────────────
+For predictions on new students:
+    responsibilities = gmm.predict_proba(x_scaled)
+    
+    Returns 5-column array with probabilities per cluster
+    Example: [0.05, 0.10, 0.72, 0.08, 0.05]
+
+STEP 5: Derive Employability Level
+────────────────────────────────────
+1. Calculate quality score for each cluster (Formula 9)
+2. Rank clusters by quality
+3. Assign labels:
+    - Bottom 33%: "Low Employability"
+    - Middle 33%: "Moderate Employability"
+    - Top 33%: "High Employability"
+
+Example (5 clusters):
+    Quality scores: [0.32, 0.51, 0.18, 0.65, 0.42]
+    Sorted: [0.18, 0.32, 0.42, 0.51, 0.65]
+    
+    Percentile ranges:
+    0-33%:  0.18, 0.32 → Clusters for "Low"
+    33-66%: 0.42      → Cluster for "Moderate"
+    66-100%: 0.51, 0.65 → Clusters for "High"
+
+3.5 GMM - USAGE IN RECOMMENDATIONS
+────────────────────────────────────
+
+For a new student with profile x:
+
+Step 1: Normalize features
+    x_scaled = (x - training_mean) / training_std
+
+Step 2: Get cluster assignment probabilities
+    prob = gmm.predict_proba([x_scaled])[0]
+    Example: [0.05, 0.25, 0.50, 0.15, 0.05]
+
+Step 3: Get primary cluster
+    cluster_id = arg_max(prob) = 2
+    probability = prob[2] = 0.50 (50% confidence)
+
+Step 4: Get employability level for that cluster
+    If cluster_id = 2 and cluster_2_level = "Moderate Employability":
+        Student's level = "Moderate Employability"
+
+Step 5: Use level in filtering
+    Filter ECLAT rules by this level:
+    - Only return rules with antecedent containing "level:moderate_employability"
+    - Rules like: "skill:python" → "Developer"
+    - Skip rules like: "level:high_employability" → "Researcher"
+
+Step 6: Rank job recommendations
+    Combine:
+    - Cluster assignments (hard constraint)
+    - ECLAT rule confidences (soft ranking)
+    - Cosine similarity to cluster center
+    
+    Final: Top 5 recommended job tracks
+
+
+═════════════════════════════════════════════════════════════════════════════════
+SECTION 4: DATA FLOW AND INTEGRATION
+═════════════════════════════════════════════════════════════════════════════════
+
+4.1 TRAINING PIPELINE
+─────────────────────
+
+Input Dataset:
+    employability.csv (500 students × 18 columns)
+    ↓
+
+Step 1: Prepare Data
+    - Filter required columns (14 for GMM, 8 for ECLAT)
+    - Normalize numeric features to [0, 1] range
+    - Create transaction set from categorical columns
+    ↓
+    Output: df (500×14 features + categoricals)
+
+Step 2: StandardScaler
+    - Zero-mean, unit variance normalization
+    - Fit on training data
+    ↓
+    Output: features_scaled (500×14 matrix, scaled)
+
+Step 3: GMM Model Selection
+    - Test K = 2, 3, 4, 5, 6, 7, 8
+    - Calculate BIC for each K
+    - Select K with minimum BIC (typically K=5)
+    ↓
+    Output: best_model (K=5 components)
+
+Step 4: GMM Fitting
+    - Use EM algorithm for ~100 iterations
+    - Converge when log-likelihood stabilizes
+    ↓
+    Output: trained_gmm with μ_k, Σ_k, π_k
+
+Step 5: Predict Clusters
+    - Assign each student to nearest cluster
+    - Get soft probabilities for all clusters
+    ↓
+    Output: cluster_assignments (500 values, 0-4)
+            cluster_probabilities (500×5 matrix)
+
+Step 6: Derive Employability Levels
+    - Calculate quality score per cluster (Formula 9)
+    - Assign "Low", "Moderate", "High" labels
+    ↓
+    Output: cluster_level_map {0: "Low", 1: "Moderate", 2: "High", ...}
+
+Step 7: Build Transactions
+    - Extract skills: "Python" → "skill:python"
+    - Extract jobs: "Developer" → "job:developer"
+    - Extract levels: "High" → "level:high_employability"
+    - Create transaction set per student
+    ↓
+    Output: training_transactions (list of 500 sets)
+
+Step 8: ECLAT Mining
+    - Mine frequent itemsets (min_support=0.02)
+    - Generate association rules (min_confidence=0.10)
+    - Get top 20 rules
+    ↓
+    Output: dynamic_eclat_rules (20 rules with support/confidence/lift)
+
+Step 9: Per-Cluster ECLAT
+    - Repeat ECLAT for each cluster separately
+    - Generate cluster-specific rules
+    ↓
+    Output: cluster_eclat_rules {0: [...], 1: [...], ...}
+
+Step 10: Build Job Profiles
+    - For each job type: average cluster responsibility
+    - For each job type: confidence strength per cluster
+    ↓
+    Output: job_cluster_profiles, job_rule_strengths
+
+Training Complete: Model saved with all parameters
+
+
+4.2 PREDICTION PIPELINE FOR NEW STUDENT
+──────────────────────────────────────
+
+Input: New Student Profile
+{
+    "gwa": 2.8,
+    "survey_scores": [3, 4, 3, 4, 4, 3, 4, 4, 3],  # 9 survey categories
+    "tech_skills": 12,
+    "soft_skills_avg": 3.5,
+    "certifications": 1,
+    "skills": ["Python", "React", "SQL"],
+    "job_type": "Unknown"
+}
+    ↓
+
+Step 1: Transform to Features
+    - gwa_norm = (5.0 - 2.8) / 4.0 = 0.55
+    - survey_avg = mean([3,4,3,4,4,3,4,4,3]) / 5.0 = 0.677
+    - tech_skills_norm = 12 / 40.0 = 0.30
+    - soft_skills_avg = 3.5 / 5.0 = 0.70
+    - cert_norm = 1 / 5.0 = 0.20
+    
+    Feature vector: [0.55, 0.677, 0.3, ..., 0.70, 0.20]
+    ↓
+
+Step 2: Scale Features
+    x_scaled = (x - training_mean) / training_std
+    ↓
+
+Step 3: GMM Predict
+    probabilities = gmm.predict_proba([x_scaled])[0]
+    Example: [0.05, 0.30, 0.45, 0.15, 0.05]
+    ↓
+
+Step 4: Get Cluster Assignment
+    cluster_id = arg_max(probabilities) = 2
+    confidence = probabilities[2] = 0.45
+    ↓
+
+Step 5: Get Employability Level
+    level = cluster_level_map[2] = "Moderate Employability"
+    ↓
+
+Step 6: Create Student Transaction
+    transaction = {
+        "skill:python", "skill:react", "skill:sql",
+        "level:moderate_employability",
+        "cert:has_cert"
+    }
+    ↓
+
+Step 7: Match ECLAT Rules
+    For each rule in dynamic_eclat_rules:
+        If rule's antecedent ⊆ student transaction:
+            MATCH (rule can be applied)
+    
+    Matched rules:
+        Rule 1: {"skill:python", "skill:react"} → "Developer"
+                confidence: 0.82, lift: 1.92
+        Rule 2: {"skill:sql"} → "Data Analyst"
+                confidence: 0.76, lift: 1.64
+    ↓
+
+Step 8: Rank Recommendations
+    Score = confidence × lift (or other ranking method)
+    
+    Developer: 0.82 × 1.92 = 1.574
+    Data Analyst: 0.76 × 1.64 = 1.246
+    
+    Ranking: [Developer, Data Analyst, ...]
+    ↓
+
+Step 9: Get Improvement Actions
+    Using ECLAT antecedents not in student transaction:
+    
+    If rule has antecedent {"skill:kubernetes"}:
+        ACTION: "Learn Kubernetes to strengthen Developer Track (confidence +8%)"
+    
+    If rule has antecedent {"cert:has_cert"} (student lacks):
+        ACTION: "Earn a certification to improve employability"
+    ↓
+
+Output: Recommendation Report
+{
+    "cluster_id": 2,
+    "cluster_name": "Moderate Developers",
+    "employability_level": "Moderate Employability",
+    "score": 60.75,
+    "top_jobs": ["Developer", "Data Analyst", ...],
+    "rules_applied": [
+        {
+            "antecedent": ["Python", "React"],
+            "consequent": "Developer",
+            "confidence": 0.82,
+            "lift": 1.92
+        },
+        ...
+    ],
+    "improvement_actions": [
+        "Learn Kubernetes to strengthen Developer Track",
+        "Earn a certification to improve employability",
+        ...
+    ]
+}
+
+
+═════════════════════════════════════════════════════════════════════════════════
+SECTION 5: PARAMETER SETTINGS AND THRESHOLDS
+═════════════════════════════════════════════════════════════════════════════════
+
+5.1 GMM PARAMETERS
+──────────────────
+
+N_COMPONENTS = 5
+    Default number of clusters (career tracks)
+    
+MIN_COMPONENTS = 2
+    Minimum to test during model selection
+    
+MAX_COMPONENTS = 8
+    Maximum to test during model selection
+    
+RANGE TO TEST: [2, 3, 4, 5, 6, 7, 8]
+    
+CV_FOLDS = 5
+    Number of folds for cross-validation
+
+MAX_ITERATIONS = 300
+    Maximum EM iterations before timeout
+
+N_INIT = 5
+    Number of random initializations (pick best)
+
+COVARIANCE_TYPE = "full"
+    Full covariance matrices (not diagonal)
+
+5.2 ECLAT PARAMETERS
+─────────────────────
+
+min_support = 0.02 (2%)
+    Global rules: Minimum 2% of all 500 students = 10 students
+    Per-cluster: 2% of cluster size (smaller support threshold)
+    
+min_confidence = 0.10 (10%)
+    Minimum 10% probability of consequent given antecedent
+    Rules with confidence < 10% are filtered out
+    
+min_confidence (refined) = 0.60 (60%)
+    For final rule ranking and display
+    Only show rules with ≥60% confidence
+    
+max_itemset_size = 3
+    Maximum items in an itemset
+    Prevents exponential explosion: max 2^3 = 8 combinations
+    
+top_k = 20
+    Return top 20 frequent itemsets
+    Return top 20 association rules
+
+5.3 CLUSTERING QUALITY WEIGHTS
+────────────────────────────────
+
+Cluster Quality Score (Formula 9) Weights:
+    GPA/Academic: 30%  (Highest importance)
+    Survey Competencies: 25%
+    Technical Skills: 20%
+    Soft Skills: 15%
+    Certifications: 10%
+    
+Employability Level Assignment:
+    Low:        Quality score in bottom 33%
+    Moderate:   Quality score in middle 33%
+    High:       Quality score in top 33%
+
+5.4 FEATURE NORMALIZATION RANGES
+──────────────────────────────────
+
+Input Column → GMM Feature → Output Range
+
+GPA (gwa) [1-5] → gwa_norm = (5-gwa)/4 → [0, 1]
+    Inverse: Lower GPA = higher score
+
+Survey Scores [1-5] → score/5 → [0, 1]
+    Example: 3 → 0.6
+
+Tech Skills Count [0-30] → min(count/40, 1) → [0, 1]
+    Max normalized at 40 skills
+
+Soft Skills [1-5] → score/5 → [0, 1]
+
+Certification Count [0-10] → min(count/5, 1) → [0, 1]
+    Max normalized at 5 certs
+
+5.5 COSINE SIMILARITY THRESHOLD
+─────────────────────────────────
+
+For ranking jobs by similarity to training examples:
+    distance = ||profile_test - profile_train||
+    threshold = 1e-9 (skip if essentially identical)
+    
+Rank by distance:
+    Closer (lower distance) = more similar = higher recommendation
+
+
+═════════════════════════════════════════════════════════════════════════════════
+SECTION 6: EXAMPLE CALCULATION WALKTHROUGH
+═════════════════════════════════════════════════════════════════════════════════
+
+6.1 COMPLETE EXAMPLE: ONE STUDENT PREDICTION
+──────────────────────────────────────────────
+
+Input Student Data:
+    Name: Student ABC
+    GPA: 2.8
+    Survey Scores (9 items): [3, 4, 3, 4, 4, 3, 4, 4, 3]
+    Programming Languages: 3
+    Web Development: 2
+    Database: 1
+    Tools: 2
+    Total Tech Skills: 8
+    Soft Skills Average: 3.5
+    Certifications: 0
+    Known Skills: ["Python", "HTML/CSS"]
+    Current Job Type: "Not Employed"
+
+
+STEP 1: Feature Transformation
+────────────────────────────────
+
+gwa_norm = (5.0 - 2.8) / 4.0 = 2.2 / 4.0 = 0.55
+
+survey_avg = mean([3, 4, 3, 4, 4, 3, 4, 4, 3]) / 5.0
+           = 32 / 9 / 5.0 = 3.556 / 5.0 = 0.711
+
+Individual survey items (each / 5):
+    professional_ethics = 3 / 5 = 0.60
+    scientific_spirit = 4 / 5 = 0.80
+    humanistic_quality = 3 / 5 = 0.60
+    computer_cognition = 4 / 5 = 0.80
+    software_design = 4 / 5 = 0.80
+    system_usage = 3 / 5 = 0.60
+    sustainable_development = 4 / 5 = 0.80
+    team_capacity = 4 / 5 = 0.80
+    job_application = 3 / 5 = 0.60
+
+tech_skills_norm = min(8 / 40.0, 1.0) = 0.20
+
+soft_skills_avg = 3.5 / 5.0 = 0.70
+
+cert_norm = 0 / 5.0 = 0.00
+
+cert_weight_norm = 1.0 (default when no certs)
+
+Feature Vector (14 dimensions):
+    [0.55, 0.711, 0.60, 0.80, 0.60, 0.80, 0.80, 0.60, 0.80, 0.80, 0.60, 0.20, 0.70, 0.00]
+
+
+STEP 2: StandardScaler Normalization
+──────────────────────────────────────
+
+Assuming training statistics (example):
+    gwa_norm: mean=0.50, std=0.15
+    survey_avg: mean=0.65, std=0.12
+    cert_norm: mean=0.15, std=0.18
+    etc.
+
+Scaled Feature Vector:
+    gwa_norm_scaled = (0.55 - 0.50) / 0.15 = 0.33
+    survey_avg_scaled = (0.711 - 0.65) / 0.12 = 0.51
+    professional_ethics_scaled = (0.60 - 0.55) / 0.15 = 0.33
+    cert_norm_scaled = (0.00 - 0.15) / 0.18 = -0.83
+    ... (other 10 dimensions similarly scaled)
+
+Scaled: [0.33, 0.51, 0.33, ..., -0.83]
+
+
+STEP 3: GMM Predict Probabilities
+───────────────────────────────────
+
+Each cluster k calculates:
+    P(x | cluster_k) = N(x | μ_k, Σ_k)
+    
+Assume cluster parameters (example):
+    Cluster 0 (Low): μ_0 = [0.2, 0.4, ...], Σ_0 = covariance matrix
+    Cluster 1 (Moderate): μ_1 = [0.5, 0.6, ...], Σ_1 = covariance matrix
+    Cluster 2 (Moderate-High): μ_2 = [0.55, 0.65, ...], Σ_2 = covariance matrix
+    Cluster 3 (High): μ_3 = [0.7, 0.75, ...], Σ_3 = covariance matrix
+    Cluster 4 (Technical): μ_4 = [0.45, 0.55, ...], Σ_4 = covariance matrix
+
+Gaussian PDF values (example):
+    N(x | cluster_0) = 0.02
+    N(x | cluster_1) = 0.08
+    N(x | cluster_2) = 0.12  ← Highest likelihood
+    N(x | cluster_3) = 0.05
+    N(x | cluster_4) = 0.06
+
+Mixing coefficients (trained weights):
+    π_0 = 0.20, π_1 = 0.25, π_2 = 0.30, π_3 = 0.15, π_4 = 0.10
+
+Weighted probabilities (before normalization):
+    π_0 * N(x|0) = 0.20 * 0.02 = 0.004
+    π_1 * N(x|1) = 0.25 * 0.08 = 0.020
+    π_2 * N(x|2) = 0.30 * 0.12 = 0.036  ← Highest
+    π_3 * N(x|3) = 0.15 * 0.05 = 0.0075
+    π_4 * N(x|4) = 0.10 * 0.06 = 0.006
+    
+    Total = 0.0735
+
+Normalized probabilities (divide each by total):
+    P(cluster_0 | x) = 0.004 / 0.0735 = 0.054 (5.4%)
+    P(cluster_1 | x) = 0.020 / 0.0735 = 0.272 (27.2%)
+    P(cluster_2 | x) = 0.036 / 0.0735 = 0.490 (49.0%)  ← Highest
+    P(cluster_3 | x) = 0.0075 / 0.0735 = 0.102 (10.2%)
+    P(cluster_4 | x) = 0.006 / 0.0735 = 0.082 (8.2%)
+    
+    Total = 1.0 ✓
+
+Result: Responsibilities = [0.054, 0.272, 0.490, 0.102, 0.082]
+
+
+STEP 4: Assign Cluster
+───────────────────────
+
+Primary Cluster: arg_max(responsibilities) = 2
+Confidence: 49.0%
+
+Interpretation: Student is 49% likely to be in Cluster 2
+This means moderate-high employability profile
+
+
+STEP 5: Get Employability Level
+─────────────────────────────────
+
+From training:
+    cluster_level_map = {
+        0: "Low Employability",
+        1: "Moderate Employability",
+        2: "Moderate Employability",
+        3: "High Employability",
+        4: "Moderate Employability"
+    }
+
+Student's Level: cluster_level_map[2] = "Moderate Employability"
+
+
+STEP 6: Calculate Employability Score
+───────────────────────────────────────
+
+Using Formula 11:
+    academic = 0.55 (from step 1)
+    survey = 0.711 (from step 1)
+    skills = 0.20 (from step 1)
+    soft = 0.70 (from step 1)
+    cert = 0.00 (from step 1)
+    
+    score = (0.55*0.30 + 0.711*0.25 + 0.20*0.20 + 0.70*0.15 + 0.00*0.10) * 100
+          = (0.165 + 0.1778 + 0.04 + 0.105 + 0) * 100
+          = 0.4878 * 100
+          = 48.78 out of 100
+
+Score Band: 48.78 is in middle range → "Moderate Employability" ✓
+
+
+STEP 7: Create Transaction
+───────────────────────────
+
+Items:
+    Skills known: {"skill:python", "skill:html_css"}
+    Has certificate: No → "cert:no_cert"
+    Employability level: "level:moderate_employability"
+    Employment: "employment:not_employed"
+
+Transaction = {"skill:python", "skill:html_css", "cert:no_cert", 
+               "level:moderate_employability", "employment:not_employed"}
+
+
+STEP 8: Match ECLAT Rules
+─────────────────────────
+
+Sample rules from training:
+
+Rule 1: {"skill:python"} → "Developer Track"
+    Antecedent: {"skill:python"}
+    In transaction? YES ✓
+    Confidence: 0.75, Lift: 1.8
+    MATCHED
+
+Rule 2: {"skill:python", "skill:react"} → "Developer Track"
+    Antecedent: {"skill:python", "skill:react"}
+    In transaction? NO (missing "skill:react")
+    NOT MATCHED
+
+Rule 3: {"cert:has_cert"} → "Data Analyst Track"
+    Antecedent: {"cert:has_cert"}
+    In transaction? NO (student has "cert:no_cert")
+    NOT MATCHED
+
+Rule 4: {"skill:html_css"} → "Developer Track"
+    Antecedent: {"skill:html_css"}
+    In transaction? YES ✓
+    Confidence: 0.62, Lift: 1.4
+    MATCHED
+
+Matched Rules:
+    Developer (from Python): confidence=0.75, lift=1.8
+    Developer (from HTML/CSS): confidence=0.62, lift=1.4
+    Additional rules may apply...
+
+
+STEP 9: Rank Job Recommendations
+──────────────────────────────────
+
+Aggregated scores from matched rules:
+
+Developer Track:
+    From Python: 0.75 * 1.8 = 1.35
+    From HTML/CSS: 0.62 * 1.4 = 0.868
+    Total score: 1.35 + 0.868 = 2.218
+
+Data Analyst Track:
+    (No matched rules yet)
+    From cluster profile: baseline 0.3
+    Total score: 0.3
+
+Web Developer Track:
+    From cluster: baseline 0.2
+    Total score: 0.2
+
+Final Ranking:
+    1. Developer Track (score: 2.22)
+    2. Data Analyst Track (score: 0.30)
+    3. Web Developer Track (score: 0.20)
+
+
+STEP 10: Generate Improvement Actions
+──────────────────────────────────────
+
+Current gaps:
+    - No certifications (cert_norm = 0)
+    - Limited technical skills (only 8/40 = 20%)
+    - Skills missing: React, SQL, etc.
+
+Recommended Actions (from ECLAT antecedents):
+
+1. "Earn a relevant IT certification"
+   (Antecedent: cert:has_cert, not in student transaction)
+   Impact: Would unlock 5+ additional job rules
+   
+2. "Learn React.js to strengthen Developer Track"
+   (Antecedent: skill:react, high lift rule exists)
+   Impact: Move Developer confidence from 0.75 to 0.92
+   
+3. "Learn SQL for Data Analyst opportunities"
+   (Antecedent: skill:sql, enables new track)
+   Impact: Unlock Data Analyst Track (currently low score)
+   
+4. "Complete 3 more technical skill areas"
+   (Current: 8/40 skills = 20%, Target: 15/40 = 37.5%)
+   Impact: Employability score improvement from 48.78 to ~62
+
+
+═════════════════════════════════════════════════════════════════════════════════
+SECTION 7: KEY INSIGHTS AND INTERPRETATIONS
+═════════════════════════════════════════════════════════════════════════════════
+
+7.1 HOW GMM WORKS IN THIS SYSTEM
+─────────────────────────────────
+
+✓ GMM segments students into 5 career tracks (clusters)
+✓ Provides soft probabilistic assignment (not hard clustering)
+✓ Creates employability levels (Low/Moderate/High) per cluster
+✓ Offers confidence levels for predictions
+
+Strengths:
+    - Probabilistic framework (uncertainty quantification)
+    - Doesn't force hard assignment to one cluster
+    - Captures overlapping career interests
+    - Scalable to many students
+
+Limitations:
+    - Assumes Gaussian distribution (may not fit all data perfectly)
+    - Requires numeric features only
+    - Ignores skill combinations (that's what ECLAT does)
+
+
+7.2 HOW ECLAT WORKS IN THIS SYSTEM
+────────────────────────────────────
+
+✓ ECLAT discovers skill combinations that predict employability
+✓ Generates actionable rules: "If you have X skills, you're likely Y"
+✓ Provides confidence (how reliable the rule is)
+✓ Provides lift (how much better than random chance)
+
+Strengths:
+    - Finds interpretable patterns
+    - Works with categorical data (skills, jobs, etc.)
+    - Generates concrete recommendations
+    - Fast for moderate-sized datasets
+
+Limitations:
+    - Doesn't consider numeric relationships directly
+    - May find spurious associations in small clusters
+    - Requires manual threshold tuning
+
+
+7.3 WHY USE BOTH GMM + ECLAT
+───────────────────────────
+
+GMM provides:
+    ✓ Dimensionality reduction (14 features → 1 cluster)
+    ✓ Probabilistic framework
+    ✓ Employability level classification
+
+ECLAT provides:
+    ✓ Interpretable rules
+    ✓ Specific improvement suggestions
+    ✓ Skill gap analysis
+
+Combined approach:
+    1. GMM determines WHERE student is (cluster, level)
+    2. ECLAT determines HOW to improve (which skills matter)
+    3. Results are filtered by GMM level (only relevant rules)
+
+
+7.4 CRITICAL FORMULAS SUMMARY
+──────────────────────────────
+
+For Quick Reference:
+
+Employability Score = 0.30×academic + 0.25×survey + 0.20×skills + 0.15×soft + 0.10×cert
+
+Support(Rule) = Students with Rule / Total Students
+
+Confidence(A→B) = Students with A∩B / Students with A
+
+Lift(A→B) = Confidence(A→B) / Support(B)
+          = How much more likely B when A occurs
+          > 1: positive correlation
+          = 1: independent
+          < 1: negative correlation
+
+Cluster Quality = 0.30×gpa + 0.25×survey + 0.20×skills + 0.15×soft + 0.10×cert
+                (All normalized to [0,1])
+
+Silhouette = (b-a) / max(a,b)
+           = How well-clustered the data is
+           [-1, 1], higher is better
+
+BIC = -2×log_L + p×ln(n)
+    = Model selection criterion
+    Lower is better (balance fit vs complexity)
+
+
+═════════════════════════════════════════════════════════════════════════════════
+SECTION 8: DATASET SPECIFICATIONS
+═════════════════════════════════════════════════════════════════════════════════
+
+8.1 OFFICIAL DATASET COLUMNS (18 total)
+──────────────────────────────────────
+
+Dataset: employability.csv
+Rows: ~500 student records
+Columns: 18
+
+Column Header               | Type    | Example Value | Purpose
+────────────────────────────┼─────────┼───────────────┼─────────────────
+gwa                         | Float   | 2.34          | GPA (1.0 low, 5.0 high)
+total_units                 | Integer | 121           | Coursework units completed
+professional_ethics         | Integer | 3             | Survey (1-5 scale)
+scientific_spirit           | Integer | 2             | Survey (1-5 scale)
+humanistic_quality          | Integer | 4             | Survey (1-5 scale)
+computer_cognition          | Integer | 2             | Survey (1-5 scale)
+software_design             | Integer | 2             | Survey (1-5 scale)
+system_usage                | Integer | 4             | Survey (1-5 scale)
+sustainable_development     | Integer | 4             | Survey (1-5 scale)
+team_capacity               | Integer | 2             | Survey (1-5 scale)
+job_application             | Integer | 2             | Survey (1-5 scale)
+programming_langs_count     | Integer | 5             | Number of programming languages
+web_dev_count               | Integer | 4             | Number of web dev skills
+database_count              | Integer | 2             | Number of database skills
+tools_count                 | Integer | 5             | Number of tools/devops skills
+soft_skills_avg             | Float   | 3.44          | Average soft skills (1-5)
+certification_count         | Integer | 4             | Number of certifications
+employability_label         | Integer | 1             | Target: 0=Low, 1=Mod, 2=High
+
+8.2 DATA STATISTICS (example from first few rows)
+──────────────────────────────────
+
+Column Name             | Min   | Max   | Mean  | Std
+────────────────────────┼───────┼───────┼───────┼─────
+gwa                     | 1.16  | 4.27  | 2.85  | 0.95
+professional_ethics     | 1     | 5     | 3.4   | 1.2
+programming_langs_count | 0     | 7     | 3.6   | 2.1
+soft_skills_avg         | 2.23  | 4.46  | 3.5   | 0.8
+certification_count     | 0     | 7     | 2.8   | 1.9
+employability_label     | 0     | 2     | 1.2   | 0.8
+
+8.3 DATA REQUIREMENTS FOR GMM
+──────────────────────────────
+
+Minimum Samples: 10 (absolute minimum for 5 clusters, should be 50+)
+Minimum Features: 14 required numeric features
+Feature Range: All scaled to [0, 1] or similar range
+Missing Values: Must be imputed (mean, median, or constant)
+Outliers: Handled by StandardScaler normalization
+
+8.4 DATA REQUIREMENTS FOR ECLAT
+─────────────────────────────────
+
+Minimum Transactions: 10 (should be 50+)
+Transaction Items: Variable (typically 100-500 unique items)
+Support Threshold: 0.02 means minimum 10 transactions for 500 dataset
+Categorical Nature: Items must be discrete/categorical
+
+
+═════════════════════════════════════════════════════════════════════════════════
+FINAL NOTES AND VERIFICATION CHECKLIST
+═════════════════════════════════════════════════════════════════════════════════
+
+✓ ECLAT Formulas Implemented:
+    ✓ Support(I) = |T_I| / n_total
+    ✓ Confidence(A→B) = sup(A∩B) / sup(A)
+    ✓ Lift(A→B) = Confidence(A→B) / sup(B)
+
+✓ GMM Formulas Implemented:
+    ✓ Gaussian PDF: 𝒩(x | μ, Σ)
+    ✓ Mixture Probability: P(x) = Σ π_k × 𝒩(x | μ_k, Σ_k)
+    ✓ Responsibility: r_k(x) = π_k × 𝒩(x | μ_k, Σ_k) / P(x)
+    ✓ Log-Likelihood: Σ log(P(x_n))
+    ✓ AIC, BIC criteria for model selection
+    ✓ Silhouette score for cluster quality
+    ✓ Cross-validated negative log-likelihood
+
+✓ Data Structure:
+    ✓ 18 columns in employability.csv
+    ✓ 14 numeric features for GMM
+    ✓ 8 categorical features for ECLAT
+    ✓ ~500 student records (rows)
+
+✓ Parameters:
+    ✓ GMM clusters: K=5
+    ✓ ECLAT support: 0.02 (2%)
+    ✓ ECLAT confidence: 0.10 (10%) globally, 0.60 (60%) for display
+    ✓ Feature normalization: StandardScaler (mean=0, std=1)
+
+✓ Formulas used correctly in recommendations:
+    ✓ Employability score formula (weighted average)
+    ✓ Confidence formula applied to rules
+    ✓ Lift used to rank rule importance
+
+END OF DOCUMENTATION
+═════════════════════════════════════════════════════════════════════════════════

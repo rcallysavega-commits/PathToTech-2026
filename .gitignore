@@ -1,0 +1,29 @@
+﻿# Environment files
+.env
+server/.env
+client/.env
+ml-service/.env
+
+# Dependencies
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Uploads (user-generated)
+server/uploads/certifications/*
+!server/uploads/certifications/.gitkeep
