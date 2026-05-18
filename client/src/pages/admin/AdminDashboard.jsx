@@ -422,7 +422,7 @@ export default function AdminDashboard() {
                       <tr style={{ background: '#f3f4f6' }}>
                         <th style={{ border: '1px solid #e5e7eb', padding: '0.75rem', textAlign: 'left' }}>Predicted ↓ / Actual →</th>
                         {(visualizationData.confusionMatrix?.labels || []).map((label, i) => (
-                          <th key={i} style={{ border: '1px solid #e5e7eb', padding: '0.75rem', textAlign: 'center', background: LEVEL_COLORS[label] || '#f3f4f6', color: LEVEL_COLORS[label] ? 'white' : '#111827' }}>
+                          <th key={i} style={{ border: '1px solid #e5e7eb', padding: '0.75rem', textAlign: 'center', background: LEVEL_COLORS[label] || '#f3f4f6', color: label ? 'white' : 'black' }}>
                             {label}
                           </th>
                         ))}
@@ -431,7 +431,7 @@ export default function AdminDashboard() {
                     <tbody>
                       {visualizationData.confusionMatrix.matrix.map((row, rowIdx) => (
                         <tr key={rowIdx}>
-                          <td style={{ border: '1px solid #e5e7eb', padding: '0.75rem', fontWeight: 600, background: LEVEL_COLORS[visualizationData.confusionMatrix.labels?.[rowIdx]] || '#f3f4f6', color: LEVEL_COLORS[visualizationData.confusionMatrix.labels?.[rowIdx]] ? 'white' : '#111827' }}>
+                          <td style={{ border: '1px solid #e5e7eb', padding: '0.75rem', fontWeight: 600, background: LEVEL_COLORS[visualizationData.confusionMatrix.labels?.[rowIdx]] || '#f3f4f6', color: visualizationData.confusionMatrix.labels?.[rowIdx] ? 'white' : 'black' }}>
                             {visualizationData.confusionMatrix.labels?.[rowIdx]}
                           </td>
                           {row.map((val, colIdx) => (
