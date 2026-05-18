@@ -16,8 +16,19 @@ logger = logging.getLogger(__name__)
 DATASET_PATH = os.getenv("DATASET_PATH", "dataset/employability.xlsx")
 
 
+SAVED_MODEL_PATH = os.getenv("SAVED_MODEL_PATH", "saved_model.pkl")
+
 def _train_model_on_startup():
     try:
+        # Try loading pre-trained model first (fast, low memory)
+        if os.path.exists(SAVED_MODEL_PATH):
+            logger.info(f"Loading pre-trained model from {SAVED_MODEL_PATH}...")
+            if ml_model.load_model(SAVED_MODEL_PATH):
+                logger.info("Pre-trained model loaded successfully. Skipping training.")
+                return
+            else:
+                logger.warning("Failed to load saved model. Falling back to training.")
+
         logger.info(f"Training thread started. Looking for dataset at: {DATASET_PATH}")
         logger.info(f"Current working directory: {os.getcwd()}")
         logger.info(f"Dataset exists: {os.path.exists(DATASET_PATH)}")

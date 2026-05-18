@@ -3,7 +3,7 @@ services:
     name: pathtotech-ml
     env: python
     pythonVersion: 3.11
-    buildCommand: python -m pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
+    buildCommand: python -m pip install --upgrade pip setuptools wheel && pip install -r requirements.txt && python -c "import model; model.load_and_train('dataset/employability.xlsx'); model.save_model('saved_model.pkl'); print('Model saved to saved_model.pkl')"
     startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATASET_PATH

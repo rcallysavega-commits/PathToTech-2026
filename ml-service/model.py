@@ -3057,3 +3057,89 @@ def get_dataset_options() -> dict:
         "technicalSkills": technical_skills,
         "softSkills": soft_skills,
     }
+
+
+# ---------------------------------------------------------------------------
+# Model persistence — save/load trained state so Render can skip re-training
+# ---------------------------------------------------------------------------
+
+def save_model(path: str = "saved_model.pkl") -> bool:
+    """Serialize the fully-trained model state to a pickle file."""
+    import pickle
+    if not is_model_ready():
+        return False
+    state = {
+        "gmm_model": gmm_model,
+        "scaler": scaler,
+        "training_info": training_info,
+        "cluster_level_map": cluster_level_map,
+        "cluster_quality_scores": cluster_quality_scores,
+        "cluster_employment_rates": cluster_employment_rates,
+        "cluster_strength_scores": cluster_strength_scores,
+        "cluster_weights": cluster_weights,
+        "cluster_label_names": cluster_label_names,
+        "cluster_job_recommendations": cluster_job_recommendations,
+        "global_job_recommendations": global_job_recommendations,
+        "job_cluster_profiles": job_cluster_profiles,
+        "job_rule_strengths": job_rule_strengths,
+        "job_level_lookup": job_level_lookup,
+        "training_feature_matrix": training_feature_matrix,
+        "training_cluster_assignments": training_cluster_assignments,
+        "training_cluster_probabilities": training_cluster_probabilities,
+        "training_employability_scores": training_employability_scores,
+        "training_employment_targets": training_employment_targets,
+        "training_job_types": training_job_types,
+        "training_transactions": training_transactions,
+        "gmm_selection_scores": gmm_selection_scores,
+        "dataset_path": dataset_path,
+    }
+    with open(path, "wb") as f:
+        import pickle
+        pickle.dump(state, f, protocol=4)
+    return True
+
+
+def load_model(path: str = "saved_model.pkl") -> bool:
+    """Load a previously saved model state from a pickle file."""
+    import pickle
+    if not os.path.exists(path):
+        return False
+    try:
+        with open(path, "rb") as f:
+            state = pickle.load(f)
+        global gmm_model, scaler, training_info, cluster_level_map
+        global cluster_quality_scores, cluster_employment_rates, cluster_strength_scores
+        global cluster_weights, cluster_label_names, cluster_job_recommendations
+        global global_job_recommendations, job_cluster_profiles, job_rule_strengths
+        global job_level_lookup, training_feature_matrix, training_cluster_assignments
+        global training_cluster_probabilities, training_employability_scores
+        global training_employment_targets, training_job_types, training_transactions
+        global gmm_selection_scores, dataset_path
+        gmm_model = state["gmm_model"]
+        scaler = state["scaler"]
+        training_info = state["training_info"]
+        cluster_level_map = state.get("cluster_level_map", {})
+        cluster_quality_scores = state.get("cluster_quality_scores", {})
+        cluster_employment_rates = state.get("cluster_employment_rates", {})
+        cluster_strength_scores = state.get("cluster_strength_scores", {})
+        cluster_weights = state.get("cluster_weights", {})
+        cluster_label_names = state.get("cluster_label_names", {})
+        cluster_job_recommendations = state.get("cluster_job_recommendations", {})
+        global_job_recommendations = state.get("global_job_recommendations", [])
+        job_cluster_profiles = state.get("job_cluster_profiles", {})
+        job_rule_strengths = state.get("job_rule_strengths", {})
+        job_level_lookup = state.get("job_level_lookup", {})
+        training_feature_matrix = state.get("training_feature_matrix")
+        training_cluster_assignments = state.get("training_cluster_assignments")
+        training_cluster_probabilities = state.get("training_cluster_probabilities")
+        training_employability_scores = state.get("training_employability_scores")
+        training_employment_targets = state.get("training_employment_targets")
+        training_job_types = state.get("training_job_types", [])
+        training_transactions = state.get("training_transactions", [])
+        gmm_selection_scores = state.get("gmm_selection_scores", [])
+        dataset_path = state.get("dataset_path", "")
+        return True
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to load saved model: {exc}")
+        return False
