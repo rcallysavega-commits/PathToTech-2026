@@ -1,6 +1,7 @@
 const axios = require('axios');
 
-const ML_URL = (process.env.ML_SERVICE_URL || 'http://localhost:8000').replace(/\/$/, '');
+const _rawML = (process.env.ML_SERVICE_URL || 'http://localhost:8000').replace(/\/$/, '');
+const ML_URL = /^https?:\/\//i.test(_rawML) ? _rawML : `https://${_rawML}`;
 
 const proxyMLRequest = async (endpoint, res) => {
   try {
@@ -13,16 +14,6 @@ const proxyMLRequest = async (endpoint, res) => {
       message: 'ML service is unavailable. Please ensure the ML service is running.',
       error: error.message,
     });
-  }
-};
-
-// GET /api/ml/ping  (public — used to wake up ML service on page load)
-const pingML = async (req, res) => {
-  try {
-    await axios.get(`${ML_URL}/`, { timeout: 60000 });
-    return res.status(200).json({ success: true });
-  } catch (_) {
-    return res.status(200).json({ success: false });
   }
 };
 
@@ -53,4 +44,4 @@ const discoverPatterns = async (req, res) => {
   }
 };
 
-module.exports = { pingML, getTrainingInfo, getFeatures, getModelSummary, getDatasetOptions, discoverPatterns };
+module.exports = { getTrainingInfo, getFeatures, getModelSummary, getDatasetOptions, discoverPatterns };

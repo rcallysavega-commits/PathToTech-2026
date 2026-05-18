@@ -6,7 +6,8 @@ const TechnicalSkill = require('../models/TechnicalSkill');
 const SoftSkill = require('../models/SoftSkill');
 const axios = require('axios');
 
-const ML_URL = (process.env.ML_SERVICE_URL || 'http://localhost:8000').replace(/\/$/, '');
+const _rawML = (process.env.ML_SERVICE_URL || 'http://localhost:8000').replace(/\/$/, '');
+const ML_URL = /^https?:\/\//i.test(_rawML) ? _rawML : `https://${_rawML}`;
 
 const STATUS_TO_LEVEL = {
   'Highly Employable': 'High Employability',
