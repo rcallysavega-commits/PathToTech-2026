@@ -23,13 +23,9 @@ services:
         sync: false
       - key: ML_SERVICE_URL
         sync: false
-      - key: EMAIL_HOST
-        value: smtp.gmail.com
-      - key: EMAIL_PORT
-        value: 587
-      - key: EMAIL_USER
+      - key: BREVO_API_KEY
         sync: false
-      - key: EMAIL_PASS
+      - key: BREVO_SENDER_EMAIL
         sync: false
       - key: ADMIN_EMAIL
         sync: false
