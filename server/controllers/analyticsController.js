@@ -310,7 +310,7 @@ const getModelInsights = async (req, res) => {
         .lean(),
       TechnicalSkill.find({ completed: true }).select('userId skills').lean(),
       User.find({ role: 'student' }).select('_id gender').lean(),
-      axios.get(`${ML_URL}/gmm-visualization`, { timeout: 15000 }).catch(() => null),
+      axios.get(`${ML_URL}/gmm-visualization`, { timeout: 60000 }).catch(() => null),
     ]);
 
     const gmmVisualization = gmmVizRes?.data || { points: [], ellipses: [], explainedVariance: [0, 0] };

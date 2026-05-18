@@ -7,7 +7,7 @@ const normalizedApiUrl = rawApiUrl
 
 const api = axios.create({
   baseURL: normalizedApiUrl ? `${normalizedApiUrl}/api` : '/api',
-  timeout: 30000,
+  timeout: 120000,
 });
 
 // Attach JWT token to every request
