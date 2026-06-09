@@ -102,6 +102,7 @@ app.use('/api/ml', require('./routes/ml'));
 app.use('/api/skill-options', require('./routes/skillOptions'));
 app.use('/api/exports', require('./routes/exports'));
 app.use('/api/landing-content', require('./routes/landingContent'));
+app.use('/api/faqs', require('./routes/faqs'));
 
 app.get('/', (req, res) => {
   res.json({

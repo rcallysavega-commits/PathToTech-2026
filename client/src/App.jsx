@@ -34,6 +34,7 @@ import ModelTransparencyPage from './pages/admin/ModelTransparencyPage';
 import SkillOptionsPage from './pages/admin/SkillOptionsPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import LandingCmsPage from './pages/admin/LandingCmsPage';
+import FAQManagementPage from './pages/admin/FAQManagementPage';
 
 // Protected Route
 const ProtectedStudentRoute = ({ children }) => {
@@ -100,6 +101,7 @@ function AppRoutes() {
         <Route path="landing-cms" element={<LandingCmsPage />} />
         <Route path="model-transparency" element={<ModelTransparencyPage />} />
         <Route path="certification-approvals" element={<CertificationApprovalsPage />} />
+        <Route path="faqs" element={<FAQManagementPage />} />
       </Route>
 
       {/* Fallback */}

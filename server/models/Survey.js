@@ -24,6 +24,7 @@ const surveySchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
     description: { type: String, default: '' },
+    source: { type: String, default: '' },
     sections: [sectionSchema],
     isActive: { type: Boolean, default: false },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

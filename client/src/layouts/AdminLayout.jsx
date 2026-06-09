@@ -4,7 +4,7 @@ import Swal from 'sweetalert2';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Users, Upload, ClipboardList,
-  FileText, LogOut, Menu, Layers, Settings, Globe2, Award,
+  FileText, LogOut, Menu, Layers, Settings, Globe2, Award, HelpCircle,
 } from 'lucide-react';
 import PathToTechLogo from '../components/PathToTechLogo';
 import api from '../services/api';
@@ -18,6 +18,7 @@ const navItems = [
   { to: '/admin/certification-approvals', icon: Award, label: 'Cert. Approvals' },
   { to: '/admin/skill-options', icon: Layers, label: 'Skill Options' },
   { to: '/admin/landing-cms', icon: Globe2, label: 'Landing CMS' },
+  { to: '/admin/faqs', icon: HelpCircle, label: 'FAQ Management' },
   { to: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 

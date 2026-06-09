@@ -7,6 +7,7 @@ import {
   Award, BookOpen, BarChart3, LogOut, Menu, Settings,
 } from 'lucide-react';
 import PathToTechLogo from '../components/PathToTechLogo';
+import FAQWidget from '../components/FAQWidget';
 import api from '../services/api';
 
 const navItems = [
@@ -270,6 +271,8 @@ export default function StudentLayout() {
           .main-content { margin-left: 260px !important; }
         }
       `}</style>
+
+      <FAQWidget />
     </div>
   );
 }

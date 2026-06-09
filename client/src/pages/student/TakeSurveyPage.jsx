@@ -275,7 +275,13 @@ export default function TakeSurveyPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <div>
             <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--maroon)', marginBottom: '0.25rem', lineHeight: 1.2 }}>{survey.title}</h1>
-            <p style={{ color: 'var(--gray-500)', fontSize: '0.84rem' }}>{survey.description}</p>
+            {survey.description && <p style={{ color: 'var(--gray-500)', fontSize: '0.84rem', marginBottom: survey.source ? '0.35rem' : 0 }}>{survey.description}</p>}
+            {survey.source && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.25rem', background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 999, padding: '0.2rem 0.7rem' }}>
+                <span style={{ fontSize: '0.72rem', color: '#856404', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Source:</span>
+                <span style={{ fontSize: '0.78rem', color: '#533f03' }}>{survey.source}</span>
+              </div>
+            )}
           </div>
           <div style={{ padding: '0.35rem 0.7rem', borderRadius: 999, background: 'var(--maroon-pale)', color: 'var(--maroon)', fontWeight: 700, fontSize: '0.78rem' }}>
             Part {currentPart + 1} / {totalParts}

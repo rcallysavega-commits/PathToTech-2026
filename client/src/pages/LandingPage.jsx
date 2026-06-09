@@ -4,6 +4,7 @@ import { ArrowRight, BarChart3, Briefcase, Building2, GraduationCap, ShieldCheck
 import PathToTechLogo from '../components/PathToTechLogo';
 import api from '../services/api';
 import { DEFAULT_LANDING_CONTENT } from '../utils/defaultLandingContent';
+import FAQWidget from '../components/FAQWidget';
 
 const highlightIcons = [BarChart3, Target, Briefcase];
 const capabilityIcons = [GraduationCap, Building2, ShieldCheck];
@@ -269,6 +270,7 @@ export default function LandingPage() {
           }
         }
       `}</style>
+      <FAQWidget />
     </div>
   );
 }

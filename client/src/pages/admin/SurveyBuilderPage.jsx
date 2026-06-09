@@ -284,7 +284,7 @@ export default function SurveyBuilderPage() {
   };
 
   const startCreate = () => {
-    setForm({ title: '', description: '', sections: [emptySection()] });
+    setForm({ title: '', description: '', source: '', sections: [emptySection()] });
     setActiveSurvey(null);
     setMode('create');
   };
@@ -293,6 +293,7 @@ export default function SurveyBuilderPage() {
     setForm({
       title: survey.title,
       description: survey.description || '',
+      source: survey.source || '',
       sections: Array.isArray(survey.sections) && survey.sections.length
         ? survey.sections.map(normalizeSection)
         : [emptySection()],
@@ -494,6 +495,7 @@ export default function SurveyBuilderPage() {
     const payload = {
       title: form.title.trim(),
       description: form.description?.trim() || '',
+      source: form.source?.trim() || '',
       sections: form.sections.map((s, si) => ({
         title: s.title.trim(),
         description: s.description?.trim() || '',
@@ -581,11 +583,18 @@ export default function SurveyBuilderPage() {
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               placeholder="e.g. Employability Assessment Survey" />
           </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
+          <div className="form-group">
             <label className="form-label">Description</label>
             <textarea className="form-control" rows={2} value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               placeholder="Brief description of this survey..." />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Source</label>
+            <input type="text" className="form-control" value={form.source || ''}
+              onChange={(e) => setForm({ ...form, source: e.target.value })}
+              placeholder="e.g. Department of Labor and Employment (DOLE)" />
+            <span style={{ fontSize: '0.78rem', color: 'var(--gray-400)', marginTop: '0.25rem', display: 'block' }}>Where this survey is sourced or adapted from (optional)</span>
           </div>
         </div>
 

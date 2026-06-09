@@ -4,6 +4,7 @@ import Swal from 'sweetalert2';
 import { Mail, RefreshCw, ShieldCheck, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PathToTechLogo from '../components/PathToTechLogo';
+import FAQWidget from '../components/FAQWidget';
 import api from '../services/api';
 
 export default function OTPVerificationPage() {
@@ -265,6 +266,7 @@ export default function OTPVerificationPage() {
           <PathToTechLogo size={32} textColor="var(--maroon-dark)" />
         </div>
       </div>
+      <FAQWidget />
     </div>
   );
 }

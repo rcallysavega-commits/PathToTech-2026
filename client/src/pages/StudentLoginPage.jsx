@@ -4,6 +4,7 @@ import Swal from 'sweetalert2';
 import { ArrowLeft, ShieldCheck, Mail, Lock, UserPlus, LogIn, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PathToTechLogo from '../components/PathToTechLogo';
+import FAQWidget from '../components/FAQWidget';
 import api from '../services/api';
 
 const COURSES = ['Computer Science', 'Information Technology', 'Information Systems'];
@@ -512,7 +513,6 @@ export default function StudentLoginPage() {
           )}
 
         </div>
-      </div>
-    </div>
+      </div>      <FAQWidget />    </div>
   );
 }
